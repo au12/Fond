@@ -1,0 +1,19 @@
+services:
+  fond:
+    image: ghcr.io/au12/fond:latest
+    container_name: fond
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: America/New_York
+      # FOND_BASE_URL: https://recipes.example.com   # set when behind a reverse proxy
+    # Optional hardening. With these, start the container as the final user
+    # (user: "1000:1000") and make sure ./data is owned by it.
+    # read_only: true
+    # cap_drop: [ALL]
+    # security_opt: [no-new-privileges:true]

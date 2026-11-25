@@ -1,0 +1,124 @@
+/* Typeset recipes: the look used for public pages, print and cookbooks.
+   Sizes are in em so a sheet scales as one piece. */
+.doc {
+  --d-accent: var(--bay);
+  --d-ink: #1c231f;
+  --d-soft: #5a655e;
+  --d-rule: #cfd5ca;
+  color: var(--d-ink);
+  font: 400 1em/1.55 var(--serif);
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  font-feature-settings: 'liga', 'calt';
+  text-rendering: optimizeLegibility;
+}
+:root[data-theme='dark'] .doc { --d-ink: var(--ink); --d-soft: var(--ink-2); --d-rule: var(--line-2); }
+.sheet-paper .doc, .printing .doc { --d-ink: #1c231f; --d-soft: #5a655e; --d-rule: #cfd5ca; --d-accent: #2c4a3a; }
+
+.doc h1 { font: 600 2.5em/1.08 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
+.doc h2 { font: italic 500 1.2em/1.2 var(--serif); color: var(--d-accent); margin-bottom: 0.6em; }
+.doc-kicker { display: flex; gap: 0.9em; justify-content: center; font-style: italic; color: var(--d-soft); margin-bottom: 0.7em; }
+.doc-no { color: var(--d-accent); font-weight: 600; font-style: normal; }
+.doc-desc { margin-top: 0.75em; font-style: italic; font-size: 1.08em; line-height: 1.5; color: var(--d-soft); white-space: pre-line; }
+.doc-facts { display: flex; flex-wrap: wrap; gap: 0.3em 2.2em; margin-top: 1.3em; padding: 0.7em 0; border-top: 1px solid var(--d-rule); border-bottom: 1px solid var(--d-rule); }
+.doc-facts dt { font-style: italic; font-size: 0.86em; color: var(--d-soft); }
+.doc-facts dd { font-weight: 600; }
+.doc-photo { margin: 1.6em 0 0; }
+.doc-photo img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 3px; }
+.doc-body { display: grid; grid-template-columns: minmax(0, 0.36fr) minmax(0, 0.64fr); gap: 2.6em; margin-top: 1.9em; align-items: start; }
+.doc-ing ul { line-height: 1.42; }
+.doc-ing li { padding: 0.28em 0; break-inside: avoid; }
+.doc-ing .q { font-weight: 600; }
+.doc-group { margin-top: 0.9em; font-style: italic; font-weight: 600; color: var(--d-soft); }
+.doc-ing li.doc-group:first-child { margin-top: 0; }
+.doc-step { display: grid; grid-template-columns: 1.7em minmax(0, 1fr); gap: 0.5em; padding-bottom: 0.85em; break-inside: avoid; }
+.doc-step .n { font-size: 1.5em; line-height: 1.05; font-weight: 500; color: var(--d-accent); font-variant-numeric: oldstyle-nums; }
+.doc-notes { margin-top: 1.2em; padding-top: 1em; border-top: 1px solid var(--d-rule); font-size: 0.95em; break-inside: avoid; }
+.doc-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 1em; margin-top: 2em; padding-top: 0.8em; border-top: 1px solid var(--d-rule); font-size: 0.85em; font-style: italic; color: var(--d-soft); }
+.doc-foot p { display: flex; flex-wrap: wrap; gap: 0.2em 1.2em; }
+.doc-foot a { text-decoration: underline; text-decoration-color: var(--d-rule); text-underline-offset: 3px; }
+.doc-qr svg { display: block; }
+
+/* Classic: a centred head, like a well-made cookbook page. */
+.doc.classic .doc-head { text-align: center; }
+.doc.classic .doc-desc { max-width: 46em; margin-inline: auto; }
+.doc.classic .doc-facts { justify-content: center; }
+
+/* Modern: sans headings, flush left, a tinted ingredient panel. */
+.doc.modern { font-family: var(--sans); font-variant-numeric: lining-nums proportional-nums; line-height: 1.6; }
+.doc.modern h1 { font: 800 2.7em/1.02 var(--sans); letter-spacing: -0.035em; }
+.doc.modern h2 { font: 700 0.95em/1.2 var(--sans); color: var(--d-ink); letter-spacing: 0; }
+.doc.modern .doc-kicker { justify-content: flex-start; font-style: normal; font-weight: 600; }
+.doc.modern .doc-desc { font-style: normal; font-family: var(--serif); }
+.doc.modern .doc-facts { border: 0; padding: 0; gap: 0.5em; }
+.doc.modern .doc-facts div { padding: 0.45em 0.95em; border-radius: 999px; background: #fbf2cb; color: #2a2508; display: flex; gap: 0.5em; align-items: baseline; }
+.doc.modern .doc-facts dt { font-style: normal; color: inherit; opacity: 0.75; }
+.doc.modern .doc-photo img { border-radius: 14px; }
+.doc.modern .doc-ing { padding: 1.2em 1.3em; border-radius: 14px; background: #eef2ea; }
+:root[data-theme='dark'] .doc.modern .doc-ing { background: var(--wash); }
+.sheet-paper .doc.modern .doc-ing, .printing .doc.modern .doc-ing { background: #eef2ea; }
+.doc.modern .doc-group { font-style: normal; }
+.doc.modern .doc-step { grid-template-columns: 2.1em minmax(0, 1fr); }
+.doc.modern .doc-step .n { width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--d-accent); color: #fff; font: 700 0.95em/1.5em var(--sans); text-align: center; font-variant-numeric: lining-nums; margin-top: 0.1em; }
+:root[data-theme='dark'] .doc.modern .doc-step .n { color: var(--on-bay); }
+.sheet-paper .doc.modern .doc-step .n, .printing .doc.modern .doc-step .n { color: #fff; }
+.doc.modern .doc-foot { font-style: normal; }
+
+/* Card: one tight column for index cards and half sheets. */
+.doc.card { font-size: 0.92em; }
+.doc.card h1 { font-size: 1.8em; }
+.doc.card .doc-body { grid-template-columns: 1fr; gap: 1.2em; margin-top: 1.1em; }
+.doc.card .doc-ing ul { columns: 2; column-gap: 2em; }
+.doc.card .doc-facts { margin-top: 0.8em; padding: 0.45em 0; }
+.doc.card .doc-photo { display: none; }
+
+@container (max-width: 560px) {
+  .doc h1 { font-size: 2em; }
+  .doc-body { grid-template-columns: 1fr; gap: 1.6em; }
+}
+
+/* ------------------------------------------------------------ paper preview & print */
+.sheet-paper { container-type: inline-size; background: #fff; color: #1c231f; border-radius: 4px; box-shadow: var(--shadow-lg); padding: clamp(22px, 6.5%, 64px); }
+.cover {
+  --c: #2c4a3a; --c-ink: #f4f1e4;
+  position: relative; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.5em;
+  aspect-ratio: 3 / 4; padding: 12%; border-radius: 0.5em 1.1em 1.1em 0.5em; background: var(--c); color: var(--c-ink);
+  font-family: var(--serif); container-type: inline-size; overflow: hidden;
+  box-shadow: inset 0.7em 0 0.9em -0.6em rgb(0 0 0 / 0.45), inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+.cover::before { content: ''; position: absolute; inset: 5.5%; border: 1px solid color-mix(in srgb, var(--c-ink) 55%, transparent); border-radius: 0.2em; pointer-events: none; }
+.cover::after { content: ''; position: absolute; inset: 7%; border: 1px solid color-mix(in srgb, var(--c-ink) 22%, transparent); border-radius: 0.1em; pointer-events: none; }
+.cover b { font: 600 17cqw/1.02 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
+.cover i { font-size: 7.5cqw; line-height: 1.3; opacity: 0.85; text-wrap: balance; }
+.cover svg { width: 15cqw; height: 15cqw; margin-top: 5cqw; opacity: 0.9; }
+.cover.bay { --c: #2c4a3a; } .cover.tomato { --c: #a8372a; } .cover.butter { --c: #ecc94f; --c-ink: #2b2507; }
+.cover.charcoal { --c: #23292c; } .cover.plum { --c: #4c2f4a; } .cover.ocean { --c: #23475c; } .cover.paper { --c: #efe9da; --c-ink: #2a2a22; }
+
+.toc { font-family: var(--serif); }
+.toc h2 { font: italic 500 1.3em var(--serif); margin: 1.4em 0 0.4em; color: #2c4a3a; }
+.toc a { display: flex; align-items: baseline; gap: 0.5em; padding: 0.22em 0; }
+.toc a::after { content: ''; order: 1; flex: 1; border-bottom: 1px dotted #9aa39b; transform: translateY(-0.25em); }
+.toc a span:last-child { order: 2; font-variant-numeric: oldstyle-nums tabular-nums; color: #5a655e; }
+
+@media print {
+  html, body { background: #fff !important; }
+  .noprint, .topbar, .tabbar, .toasts { display: none !important; }
+  .shell { padding: 0 !important; }
+  .sheet-paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0 !important; width: auto !important; max-width: none !important; container-type: normal; }
+  .doc { font-size: var(--print-size, 11pt); hyphens: auto; }
+  .doc-photo { margin-top: 1.1em; }
+  .doc-photo img { max-height: 2.25in; }
+  .doc-body { margin-top: 1.3em; }
+  .page-break { break-before: page; }
+  /* Grids fragment badly across pages; floats flow cleanly. */
+  .doc-body { display: block; }
+  .doc-body::after { content: ''; display: block; clear: both; }
+  .doc-ing { float: left; width: 33%; }
+  .doc-method { margin-left: 38%; }
+  .doc.card .doc-ing { float: none; width: auto; margin-bottom: 1em; }
+  .doc.card .doc-method { margin-left: 0; }
+  .doc-step, .doc-ing li { break-inside: avoid; }
+  .doc h2 { break-after: avoid; }
+  .cover { aspect-ratio: auto; height: 100vh; border-radius: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .doc.modern .doc-ing, .doc.modern .doc-facts div, .doc.modern .doc-step .n { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  a { color: inherit; }
+}

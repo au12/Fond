@@ -1,0 +1,7 @@
+.git
+.github
+docs
+unraid
+web/node_modules
+web/dist
+*.md
