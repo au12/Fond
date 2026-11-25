@@ -53,6 +53,13 @@ func (s *Server) routes() {
 	m.HandleFunc("PUT /api/recipes/{id}/rating", s.user(s.setRating))
 	m.HandleFunc("PUT /api/recipes/{id}/share", s.user(s.shareRecipe))
 	m.HandleFunc("PUT /api/recipes/{id}/cookbooks", s.user(s.setRecipeCookbooks))
+	m.HandleFunc("GET /api/recipes/{id}/versions", s.user(s.listVersions))
+	m.HandleFunc("POST /api/recipes/{id}/versions/{version}/restore", s.user(s.restoreVersion))
+	m.HandleFunc("GET /api/food-rules", s.user(s.listFoodRules))
+	m.HandleFunc("PUT /api/food-rules", s.user(s.saveFoodRule))
+	m.HandleFunc("DELETE /api/food-rules/{id}", s.user(s.deleteFoodRule))
+	m.HandleFunc("POST /api/food-rules/suggest", s.user(s.suggestFoods))
+	m.HandleFunc("GET /api/ingredient-lines", s.user(s.ingredientLines))
 	m.HandleFunc("GET /api/tags", s.user(s.listTags))
 	m.HandleFunc("PUT /api/tags", s.user(s.retag))
 
@@ -818,7 +825,7 @@ func (s *Server) clearShopping(w http.ResponseWriter, r *http.Request, _ *User) 
 
 func publicView(rec *model.Recipe) *model.Recipe {
 	out := *rec
-	out.Favorite, out.CookedCount, out.LastCooked, out.Rating, out.Cookbooks = false, 0, 0, 0, nil
+	out.Favorite, out.CookedCount, out.LastCooked, out.Rating, out.Cookbooks, out.Version = false, 0, 0, 0, nil, 0
 	return &out
 }
 
@@ -837,7 +844,12 @@ func (s *Server) publicRecipe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errNotFound
 	}
-	s.writeJSON(w, r, 200, publicView(rec))
+	// A shared recipe is weighed the way its household weighs it.
+	b, _ := json.Marshal(publicView(rec))
+	out := map[string]any{}
+	json.Unmarshal(b, &out)
+	out["foodRules"], _ = s.store.FoodRules()
+	s.writeJSON(w, r, 200, out)
 	return nil
 }
 
@@ -861,7 +873,8 @@ func (s *Server) publicCookbook(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errNotFound
 	}
-	s.writeJSON(w, r, 200, map[string]any{"cookbook": c, "recipes": s.cookbookRecipes(c)})
+	rules, _ := s.store.FoodRules()
+	s.writeJSON(w, r, 200, map[string]any{"cookbook": c, "recipes": s.cookbookRecipes(c), "foodRules": rules})
 	return nil
 }
 

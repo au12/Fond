@@ -315,24 +315,19 @@ Rules: copy quantities and wording faithfully and never invent ingredients. One 
 One step per array item, without numbering. For a section heading inside ingredients or steps (like "For the sauce"), add an item that starts with "# ".
 Use 0 or "" when something is unknown. At most 4 short tags (course or cuisine). If there is no recipe, reply {"title": ""}.`
 
-func (s *Server) aiExtract(ctx context.Context, prompt string, jpeg []byte) (*model.Recipe, error) {
+// aiChat sends one system and one user message to the configured
+// OpenAI-compatible endpoint and returns the model's reply.
+func (s *Server) aiChat(ctx context.Context, system string, content any) (string, error) {
 	c := s.aiConfig()
-	var content any = prompt
-	if jpeg != nil {
-		content = []map[string]any{
-			{"type": "text", "text": prompt},
-			{"type": "image_url", "image_url": map[string]string{"url": "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(jpeg)}},
-		}
-	}
 	body, _ := json.Marshal(map[string]any{
 		"model": c.Model, "temperature": 0, "stream": false,
-		"messages": []map[string]any{{"role": "system", "content": aiSystem}, {"role": "user", "content": content}},
+		"messages": []map[string]any{{"role": "system", "content": system}, {"role": "user", "content": content}},
 	})
 	ctx, cancel := context.WithTimeout(ctx, 180*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if c.Key != "" {
@@ -340,12 +335,12 @@ func (s *Server) aiExtract(ctx context.Context, prompt string, jpeg []byte) (*mo
 	}
 	res, err := (&http.Client{Timeout: 185 * time.Second}).Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer res.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(res.Body, 4<<20))
 	if res.StatusCode >= 400 {
-		return nil, fmt.Errorf("the AI endpoint answered HTTP %d", res.StatusCode)
+		return "", fmt.Errorf("the AI endpoint answered HTTP %d", res.StatusCode)
 	}
 	var out struct {
 		Choices []struct {
@@ -355,12 +350,24 @@ func (s *Server) aiExtract(ctx context.Context, prompt string, jpeg []byte) (*mo
 		} `json:"choices"`
 	}
 	if json.Unmarshal(raw, &out) != nil || len(out.Choices) == 0 {
-		return nil, errors.New("the AI endpoint sent an unexpected reply")
+		return "", errAIReply
 	}
-	text := out.Choices[0].Message.Content
-	if i, j := strings.Index(text, "{"), strings.LastIndex(text, "}"); i >= 0 && j > i {
-		text = text[i : j+1]
+	return out.Choices[0].Message.Content, nil
+}
+
+func (s *Server) aiExtract(ctx context.Context, prompt string, jpeg []byte) (*model.Recipe, error) {
+	var content any = prompt
+	if jpeg != nil {
+		content = []map[string]any{
+			{"type": "text", "text": prompt},
+			{"type": "image_url", "image_url": map[string]string{"url": "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(jpeg)}},
+		}
 	}
+	text, err := s.aiChat(ctx, aiSystem, content)
+	if err != nil {
+		return nil, err
+	}
+	text = jsonObject(text)
 	var got struct {
 		Title, Description, Yield, Notes       string
 		Servings                               float64
@@ -629,7 +636,14 @@ func (s *Server) exportAll(w http.ResponseWriter, r *http.Request, u *User) erro
 	zw := zip.NewWriter(w)
 	defer zw.Close()
 	f, _ := zw.Create("fond.json")
-	json.NewEncoder(f).Encode(map[string]any{"version": 1, "exportedAt": now(), "recipes": recipes, "cookbooks": books})
+	history := map[int64][]*Version{}
+	for _, rec := range recipes {
+		if vs, err := s.store.Versions(rec.ID); err == nil && len(vs) > 1 {
+			history[rec.ID] = vs
+		}
+	}
+	rules, _ := s.store.FoodRules()
+	json.NewEncoder(f).Encode(map[string]any{"version": 2, "exportedAt": now(), "recipes": recipes, "cookbooks": books, "history": history, "foodRules": rules})
 	for _, rec := range recipes {
 		if rec.Image == "" {
 			continue

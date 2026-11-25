@@ -109,6 +109,32 @@ CREATE TABLE IF NOT EXISTS shopping (
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS recipe_versions (
+  recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  yield TEXT NOT NULL DEFAULT '',
+  servings REAL NOT NULL DEFAULT 0,
+  ingredients TEXT NOT NULL DEFAULT '[]',
+  steps TEXT NOT NULL DEFAULT '[]',
+  note TEXT NOT NULL DEFAULT '',
+  user_id INTEGER,
+  user_name TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (recipe_id, version)
+);
+CREATE TABLE IF NOT EXISTS food_rules (
+  id INTEGER PRIMARY KEY,
+  phrase TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  action TEXT NOT NULL,
+  food_id TEXT NOT NULL DEFAULT '',
+  g_per_ml REAL NOT NULL DEFAULT 0,
+  g_each REAL NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'user',
+  user_id INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `
 
 // Store wraps the SQLite database.
@@ -132,12 +158,45 @@ func OpenStore(dir string) (*Store, error) {
 		return nil, fmt.Errorf("schema: %w", err)
 	}
 	s := &Store{db: db}
+	if err := s.migrate(); err != nil {
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	_, err = db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS recipes_fts USING fts5(title, tags, body, tokenize='unicode61 remove_diacritics 2', prefix='2 3')`)
 	s.fts = err == nil
 	return s, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// migrate brings a database made by an earlier release up to date.
+func (s *Store) migrate() error {
+	if !s.hasColumn("recipes", "version") {
+		if _, err := s.db.Exec(`ALTER TABLE recipes ADD COLUMN version INTEGER NOT NULL DEFAULT 1`); err != nil {
+			return err
+		}
+	}
+	// Every recipe has a history, starting with the recipe as it stands.
+	_, err := s.db.Exec(`INSERT INTO recipe_versions (recipe_id, version, title, yield, servings, ingredients, steps, note, user_id, user_name, created_at)
+		SELECT r.id, r.version, r.title, r.yield, r.servings, r.ingredients, r.steps, '', r.created_by, COALESCE(u.name, ''), r.updated_at
+		FROM recipes r LEFT JOIN users u ON u.id = r.created_by
+		WHERE NOT EXISTS (SELECT 1 FROM recipe_versions v WHERE v.recipe_id = r.id)`)
+	return err
+}
+
+func (s *Store) hasColumn(table, column string) bool {
+	rows, err := s.db.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if rows.Scan(&name) == nil && name == column {
+			return true
+		}
+	}
+	return false
+}
 
 // ------------------------------------------------------------------ users
 
@@ -330,13 +389,13 @@ func (s *Store) Cards(userID int64, where string, args ...any) ([]Card, error) {
 }
 
 const recipeCols = `id, slug, title, description, image, image_color, source_url, source_name, author, yield, servings, prep_min, cook_min, total_min,
- ingredients, steps, notes, tags, nutrition, extra, rating, cooked_count, last_cooked, COALESCE(share_token,''), created_at, updated_at`
+ ingredients, steps, notes, tags, nutrition, extra, rating, cooked_count, last_cooked, COALESCE(share_token,''), created_at, updated_at, version`
 
 func scanRecipe(row interface{ Scan(...any) error }) (*model.Recipe, error) {
 	r := &model.Recipe{}
 	var ing, steps, tags, nut, extra string
 	err := row.Scan(&r.ID, &r.Slug, &r.Title, &r.Description, &r.Image, &r.ImageColor, &r.SourceURL, &r.SourceName, &r.Author, &r.Yield, &r.Servings,
-		&r.PrepMin, &r.CookMin, &r.TotalMin, &ing, &steps, &r.Notes, &tags, &nut, &extra, &r.Rating, &r.CookedCount, &r.LastCooked, &r.ShareToken, &r.CreatedAt, &r.UpdatedAt)
+		&r.PrepMin, &r.CookMin, &r.TotalMin, &ing, &steps, &r.Notes, &tags, &nut, &extra, &r.Rating, &r.CookedCount, &r.LastCooked, &r.ShareToken, &r.CreatedAt, &r.UpdatedAt, &r.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -414,6 +473,9 @@ func (s *Store) index(tx *sql.Tx, r *model.Recipe) {
 
 // SaveRecipe inserts (ID == 0) or updates a recipe. Image fields, sharing and
 // cook history are managed by their own methods and are left untouched here.
+//
+// A save that really changes the ingredients or the steps starts a new
+// version, and the recipe as it then stands is added to its history.
 func (s *Store) SaveRecipe(r *model.Recipe, userID int64, origin string) error {
 	r.Normalize()
 	if r.Title == "" {
@@ -424,12 +486,15 @@ func (s *Store) SaveRecipe(r *model.Recipe, userID int64, origin string) error {
 	if nut == nil {
 		nut = map[string]string{}
 	}
+	note := r.VersionNote
+	r.VersionNote = ""
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	t := now()
+	snapshot := false
 	if r.ID == 0 {
 		if r.CreatedAt == 0 {
 			r.CreatedAt = t
@@ -437,9 +502,10 @@ func (s *Store) SaveRecipe(r *model.Recipe, userID int64, origin string) error {
 		if r.UpdatedAt == 0 {
 			r.UpdatedAt = t
 		}
+		r.Version, snapshot = 1, true
 		res, err := tx.Exec(`INSERT INTO recipes (slug, title, description, image, image_color, source_url, source_name, author, yield, servings, prep_min, cook_min, total_min,
-			ingredients, steps, notes, tags, nutrition, extra, rating, cooked_count, last_cooked, origin, created_by, created_at, updated_at)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			ingredients, steps, notes, tags, nutrition, extra, rating, cooked_count, last_cooked, origin, created_by, created_at, updated_at, version)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
 			r.Slug, r.Title, r.Description, r.Image, r.ImageColor, r.SourceURL, r.SourceName, r.Author, r.Yield, r.Servings, r.PrepMin, r.CookMin, r.TotalMin,
 			js(r.Ingredients), js(r.Steps), r.Notes, js(r.Tags), js(nut), string(r.Extra), r.Rating, r.CookedCount, r.LastCooked, origin, userID, r.CreatedAt, r.UpdatedAt)
 		if err != nil {
@@ -447,17 +513,38 @@ func (s *Store) SaveRecipe(r *model.Recipe, userID int64, origin string) error {
 		}
 		r.ID, _ = res.LastInsertId()
 	} else {
+		var oldIng, oldSteps string
+		if err := tx.QueryRow(`SELECT ingredients, steps, version FROM recipes WHERE id=?`, r.ID).Scan(&oldIng, &oldSteps, &r.Version); err != nil {
+			return sql.ErrNoRows
+		}
+		var was struct{ ing, steps []model.Line }
+		json.Unmarshal([]byte(oldIng), &was.ing)
+		json.Unmarshal([]byte(oldSteps), &was.steps)
+		if !model.SameLines(was.ing, r.Ingredients) || !model.SameLines(was.steps, r.Steps) {
+			r.Version++
+			snapshot = true
+		}
 		r.UpdatedAt = t
 		res, err := tx.Exec(`UPDATE recipes SET slug=?, title=?, description=?, source_url=?, source_name=?, author=?, yield=?, servings=?, prep_min=?, cook_min=?, total_min=?,
-			ingredients=?, steps=?, notes=?, tags=?, nutrition=?, extra=?, rating=?, updated_at=? WHERE id=?`,
+			ingredients=?, steps=?, notes=?, tags=?, nutrition=?, extra=?, rating=?, updated_at=?, version=? WHERE id=?`,
 			r.Slug, r.Title, r.Description, r.SourceURL, r.SourceName, r.Author, r.Yield, r.Servings, r.PrepMin, r.CookMin, r.TotalMin,
-			js(r.Ingredients), js(r.Steps), r.Notes, js(r.Tags), js(nut), string(r.Extra), r.Rating, t, r.ID)
+			js(r.Ingredients), js(r.Steps), r.Notes, js(r.Tags), js(nut), string(r.Extra), r.Rating, t, r.Version, r.ID)
 		if err != nil {
 			return err
 		}
 		if n, _ := res.RowsAffected(); n == 0 {
 			return sql.ErrNoRows
 		}
+	}
+	if snapshot {
+		var who string
+		tx.QueryRow(`SELECT name FROM users WHERE id=?`, userID).Scan(&who)
+		if _, err := tx.Exec(`INSERT OR REPLACE INTO recipe_versions (recipe_id, version, title, yield, servings, ingredients, steps, note, user_id, user_name, created_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Version, r.Title, r.Yield, r.Servings, js(r.Ingredients), js(r.Steps), note, userID, who, t); err != nil {
+			return err
+		}
+		// Keep the first version and the latest hundred.
+		tx.Exec(`DELETE FROM recipe_versions WHERE recipe_id=? AND version>1 AND version<=?`, r.ID, r.Version-maxVersions)
 	}
 	s.index(tx, r)
 	return tx.Commit()

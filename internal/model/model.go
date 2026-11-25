@@ -48,6 +48,11 @@ type Recipe struct {
 	Cookbooks   []int64           `json:"cookbooks"`
 	CreatedAt   int64             `json:"createdAt"`
 	UpdatedAt   int64             `json:"updatedAt"`
+	// Version counts the saves that really changed the ingredients or the
+	// steps; every one of them is kept in the recipe's history.
+	Version int `json:"version"`
+	// VersionNote is sent with a save to say what it did ("Weights added").
+	VersionNote string `json:"versionNote,omitempty"`
 }
 
 var (
@@ -128,6 +133,22 @@ func (r *Recipe) Normalize() {
 	if len(r.Extra) > 16000 {
 		r.Extra = nil
 	}
+	r.VersionNote = clip(CleanLine(r.VersionNote), 120)
+}
+
+// SameLines reports whether two ingredient or step lists say the same thing,
+// ignoring differences in spacing alone.
+func SameLines(a, b []Line) bool {
+	a, b = cleanLines(a, 1<<30, 1<<30), cleanLines(b, 1<<30, 1<<30)
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].H != b[i].H || CleanLine(a[i].Text) != CleanLine(b[i].Text) {
+			return false
+		}
+	}
+	return true
 }
 
 // CleanTags trims, de-duplicates (case-insensitively) and bounds a tag list.
