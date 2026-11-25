@@ -7,3 +7,7 @@ web/dist/*
 *.db-shm
 *.db-wal
 .DS_Store
+
+# Source databases downloaded by scripts/foods/build.py
+scripts/foods/.cache/
+__pycache__/

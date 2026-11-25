@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import foods from '../data/foods.json';
+import { loadFoods } from './foods';
 import { bakers, parseIngredient as p, show, type DisplayOptions } from './ingredients';
 import { tokenize } from './steps';
+
+loadFoods(foods as any);
 
 const base: DisplayOptions = { scale: 1, system: 'original', weigh: false, fractions: true };
 const s = (text: string, o: Partial<DisplayOptions> = {}) => {
@@ -35,7 +39,7 @@ describe('parsing', () => {
     const c = p('1 (14.5-ounce) can diced tomatoes');
     expect([c.qty, c.unit?.key, c.size, c.rest]).toEqual([1, 'can', '(14.5-ounce)', 'diced tomatoes']);
     const d = p('1 stick (113 g) butter');
-    expect([d.unit?.key, d.rest]).toEqual(['stick', '(113 g) butter']);
+    expect([d.unit?.key, d.alt?.qty, d.rest]).toEqual(['stick', 113, 'butter']);
     const e = p('a pinch of salt');
     expect([e.qty, e.unit?.key, e.rest]).toEqual([1, 'pinch', 'salt']);
     expect(p('200g/7oz dark chocolate').alt?.unit.key).toBe('oz');
@@ -78,7 +82,7 @@ describe('display', () => {
     expect(s('500 g beef mince', { system: 'us' })).toBe('1 lb beef mince');
     expect(s('250 ml milk', { system: 'us' })).toBe('1 cup milk');
     expect(s('120 g flour', { system: 'us' })).toBe('1 cup flour');
-    expect(s('120 g flour', { system: 'us', weigh: true })).toBe('4 oz flour');
+    expect(s('120 g flour', { system: 'us', weigh: true })).toBe('4¼ oz flour');
     expect(s('15 ml lemon juice', { system: 'us' })).toBe('1 tbsp lemon juice');
     expect(s('200g/7oz dark chocolate', { system: 'us' })).toBe('7 oz dark chocolate');
   });
