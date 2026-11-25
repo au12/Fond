@@ -247,6 +247,13 @@ describe('corrections', () => {
     expect(id('tiger nut flour')).toBe('flour-almond');
     expect(matchFood('Tiger Nut Flour, sifted').via).toBe('rule');
   });
+  it('files a rule under the ingredient, however it was written', () => {
+    setRules([{ phrase: 'Toffee Bits', action: 'map', foodId: 'chocolate-chips' }]);
+    expect(id('toffee bits')).toBe('chocolate-chips');
+    expect(id('toffee bit')).toBe('chocolate-chips');
+    expect(id('chilled toffee bits, roughly chopped')).toBe('chocolate-chips');
+    expect(id('toffee sauce')).not.toBe('chocolate-chips');
+  });
   it('takes the cook’s own measurements', () => {
     setRules([{ phrase: 'house granola', action: 'custom', gPerMl: 0.5, gEach: null }]);
     expect(g('1 cup house granola')).toBeCloseTo(118.3, 1);

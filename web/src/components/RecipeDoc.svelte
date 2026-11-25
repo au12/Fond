@@ -6,6 +6,7 @@
   import { formatNumber, parseIngredient, show, type DisplayOptions } from '../lib/ingredients';
   import { minutesLabel, tokenize } from '../lib/steps';
   import type { Recipe } from '../lib/types';
+  import { dict, weighOptions } from '../lib/weigh.svelte';
 
   let {
     r, look = 'classic', opts, temp = 'original', photo = true, notes = true, qr = '', number = 0, chapter = '',
@@ -21,6 +22,8 @@
   });
   const tempMode = $derived(temp === 'original' && opts.system !== 'original' ? (opts.system === 'metric' ? 'C' : 'F') : temp);
   const clean = (s: string) => s.replace(/\*\*|__/g, '');
+  // Each recipe is weighed with its own corrections and its own salt.
+  const o = $derived((dict.rev, { ...opts, ...weighOptions(r, { flour: opts.flour ?? 'spoon' }) }));
 </script>
 
 <article class={`doc ${look}`} id={number ? `recipe-${number}` : undefined}>
@@ -43,8 +46,8 @@
           {#if line.h}
             <li class="doc-group">{line.text}</li>
           {:else}
-            {@const s = show(parseIngredient(line.text), opts)}
-            <li>{#if s.measure}<span class="q">{s.measure}</span>{' '}{/if}{s.rest}</li>
+            {@const s = show(parseIngredient(line.text), o)}
+            <li>{#if s.measure}<span class="q">{s.estimated && s.approx ? '≈ ' : ''}{s.measure}</span>{' '}{/if}{s.rest}{#if s.also}<span class="also"> ({s.approx ? '≈ ' : ''}{s.also})</span>{/if}</li>
           {/if}
         {/each}
       </ul>

@@ -62,6 +62,11 @@ describe('display', () => {
     expect(s('3 large eggs', { scale: 1.5 })).toBe('4½ large eggs');
     expect(s('1 clove garlic', { scale: 3 })).toBe('3 cloves garlic');
     expect(s('1 egg', { scale: 2 })).toBe('2 eggs');
+    expect(s('1 large egg', { scale: 2 })).toBe('2 large eggs');
+    expect(s('2 large eggs', { scale: 0.5 })).toBe('1 large egg');
+    expect(s('2 eggs, beaten', { scale: 1.5 })).toBe('3 eggs, beaten');
+    expect(s('113 g butter', { scale: 2 })).toBe('226 g butter');
+    expect(s('1/2 cup (117 g) starter', { system: 'metric', weigh: true })).toBe('117 g starter');
     expect(s('500 g flour', { scale: 1.5 })).toBe('750 g flour');
     expect(s('3 tbsp butter', { scale: 1.5 })).toBe('4½ tbsp butter');
     expect(s('1/4 cup oil', { scale: 2 })).toBe('½ cup oil');

@@ -1,6 +1,6 @@
 // Fond service worker: makes the app installable and keeps recipes you've
 // opened readable when the kitchen Wi-Fi drops out.
-const VERSION = 'fond-v1';
+const VERSION = 'fond-v2';
 const SHELL = VERSION + '-shell';
 const DATA = VERSION + '-data';
 const IMAGES = VERSION + '-img';
@@ -58,7 +58,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(cacheFirst(req, SHELL));
   } else if (url.pathname.startsWith('/img/')) {
     e.respondWith(cacheFirst(req, IMAGES, 600));
-  } else if (/^\/api\/(recipes|cookbooks|me$|shopping|public)/.test(url.pathname) && !url.pathname.startsWith('/api/export')) {
+  } else if (/^\/api\/(recipes|cookbooks|me$|shopping|public|food-rules$)/.test(url.pathname) && !url.pathname.startsWith('/api/export')) {
     e.respondWith(networkFirst(req, DATA));
   }
 });

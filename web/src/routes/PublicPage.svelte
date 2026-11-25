@@ -5,8 +5,10 @@
   import { get } from '../lib/api';
   import { formatNumber, type System } from '../lib/ingredients';
   import { keepAwake } from '../lib/wake';
-  import { Minus, Plus, Printer } from '../lib/icons';
+  import { Minus, Plus, Printer, Scale } from '../lib/icons';
   import type { Cookbook, Recipe } from '../lib/types';
+  import type { Rule } from '../lib/foods';
+  import { ensureFoods, useRules } from '../lib/weigh.svelte';
 
   let { kind, token }: { kind: 'recipe' | 'cookbook'; token: string } = $props();
   let recipe = $state<Recipe | null>(null);
@@ -15,10 +17,13 @@
   let gone = $state(false);
   let scale = $state(1);
   let system = $state<System>('original');
-  const opts = $derived({ scale, system, weigh: false, fractions: true });
+  let weigh = $state(false);
+  const opts = $derived({ scale, system, weigh, fractions: true });
 
-  if (kind === 'recipe') get<Recipe>(`/public/recipe/${token}`).then((r) => { recipe = r; document.title = r.title; keepAwake(true); }).catch(() => (gone = true));
-  else get<{ cookbook: Cookbook; recipes: Recipe[] }>(`/public/cookbook/${token}`).then((x) => { book = x.cookbook; recipes = x.recipes; document.title = x.cookbook.title; }).catch(() => (gone = true));
+  // A guest sees the weights the household would: its corrections travel with the link.
+  ensureFoods();
+  if (kind === 'recipe') get<Recipe & { foodRules?: Rule[] }>(`/public/recipe/${token}`).then((r) => { useRules(r.foodRules); recipe = r; document.title = r.title; keepAwake(true); }).catch(() => (gone = true));
+  else get<{ cookbook: Cookbook; recipes: Recipe[]; foodRules?: Rule[] }>(`/public/cookbook/${token}`).then((x) => { useRules(x.foodRules); book = x.cookbook; recipes = x.recipes; document.title = x.cookbook.title; }).catch(() => (gone = true));
 
   function step(d: number) {
     if (recipe && recipe.servings > 0) scale = Math.max(1, Math.round(recipe.servings * scale + d)) / recipe.servings;
@@ -41,6 +46,7 @@
         <button onclick={() => step(1)} aria-label="Make more"><Plus /></button>
       </div>
     {/if}
+    <button class="chip" class:on={weigh} onclick={() => (weigh = !weigh)} aria-pressed={weigh} title="Show cups and spoons as weights"><Scale />Weigh</button>
     <div class="seg" role="group" aria-label="Units">
       <button class:on={system === 'original'} onclick={() => (system = 'original')}>As written</button>
       <button class:on={system === 'metric'} onclick={() => (system = 'metric')}>Metric</button>

@@ -8,6 +8,7 @@
   import Library from './routes/Library.svelte';
   import RecipePage from './routes/RecipePage.svelte';
   import EditPage from './routes/EditPage.svelte';
+  import HistoryPage from './routes/HistoryPage.svelte';
   import Cookbooks from './routes/Cookbooks.svelte';
   import CookbookPage from './routes/CookbookPage.svelte';
   import Shopping from './routes/Shopping.svelte';
@@ -63,6 +64,8 @@
     <main>
       {#if seg[0] === 'r' && seg[2] === 'edit'}
         <EditPage id={idOf(seg[1])} />
+      {:else if seg[0] === 'r' && seg[2] === 'history'}
+        {#key idOf(seg[1])}<HistoryPage id={idOf(seg[1])} />{/key}
       {:else if seg[0] === 'r'}
         {#key idOf(seg[1])}<RecipePage id={idOf(seg[1])} />{/key}
       {:else if seg[0] === 'new'}

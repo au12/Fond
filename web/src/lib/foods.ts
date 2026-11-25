@@ -230,9 +230,14 @@ export const foodsVersion = () => VERSION;
 export const allFoods = () => FOODS;
 export const foodById = (id: string) => BY_ID.get(id) ?? null;
 
+/** The key a rule is filed under: its phrase without describing words, in the singular. */
+export function ruleKey(phrase: string): string {
+  return words(phrase).filter((t) => !isFiller(t)).join(' ');
+}
+
 export function setRules(rules: Rule[]): void {
   CACHE.clear();
-  RULES = new Map(rules.map((r) => [r.phrase.toLowerCase(), r]));
+  RULES = new Map(rules.map((r) => [ruleKey(r.phrase), r]));
 }
 export const allRules = () => [...RULES.values()];
 
@@ -517,9 +522,12 @@ export function eachOf(m: Match, unit = ''): Density | null {
   return g != null ? { gml: g, approx: m.approx || !!m.size } : null;
 }
 
+/** Words that say nothing about what a thing weighs: "toffee bits" is not like "bacon bits". */
+const VAGUE = list('bit piece chunk mix blend topping filling thing stuff');
+
 /** Foods whose names resemble the query, best first; for the "pick a food" search. */
 export function searchFoods(query: string, limit = 8): Food[] {
-  const q = words(query).filter((t) => !SAFE.has(t));
+  const q = words(query).filter((t) => !SAFE.has(t) && !VAGUE.has(t) && !MEASURES.has(t) && !/^\d/.test(t));
   if (!q.length) return [];
   const scored: [number, Food][] = [];
   for (const food of FOODS) {

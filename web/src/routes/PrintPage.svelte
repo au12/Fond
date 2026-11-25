@@ -6,6 +6,7 @@
   import { app, oops, prefs, savePrefs } from '../lib/state.svelte';
   import { ArrowLeft, Printer } from '../lib/icons';
   import type { Cookbook, Recipe } from '../lib/types';
+  import { ensureFoods } from '../lib/weigh.svelte';
 
   let { kind, id }: { kind: 'recipe' | 'cookbook'; id: number } = $props();
   const pf = prefs();
@@ -18,8 +19,11 @@
   let notes = $state(true);
   let qr = $state(true);
   let size = $state(11);
+  // Print what the cook was looking at: the recipe page passes its Weigh setting along.
+  let weigh = $state(new URLSearchParams(app.query).has('weigh') ? new URLSearchParams(app.query).get('weigh') === '1' : pf.weigh);
   const scale = kind === 'recipe' ? cookState(id).scale : 1;
-  const opts = $derived({ scale, system: pf.system, weigh: pf.weigh, fractions: pf.fractions });
+  const opts = $derived({ scale, system: pf.system, weigh, fractions: pf.fractions, flour: pf.flour });
+  ensureFoods();
 
   if (kind === 'recipe') get<Recipe>(`/recipes/${id}`).then((r) => (recipe = r)).catch(oops);
   else get<{ cookbook: Cookbook; recipes: Recipe[] }>(`/cookbooks/${id}?full=1`).then((x) => { book = x.cookbook; recipes = x.recipes; look = x.cookbook.style; }).catch(oops);
@@ -60,6 +64,7 @@
     </div>
     <select class="input mini" bind:value={paper} aria-label="Paper size">{#each Object.entries(PAPER) as [k, v]}<option value={k}>{v.label}</option>{/each}</select>
     <select class="input mini" bind:value={size} aria-label="Text size"><option value={10}>Small text</option><option value={11}>Medium text</option><option value={12.5}>Large text</option></select>
+    <button class="chip" class:on={weigh} onclick={() => (weigh = !weigh)} aria-pressed={weigh}>Weights</button>
     <button class="chip" class:on={photo} onclick={() => (photo = !photo)} aria-pressed={photo}>Photo</button>
     <button class="chip" class:on={notes} onclick={() => (notes = !notes)} aria-pressed={notes}>Notes</button>
     {#if kind === 'recipe' && qrLink}<button class="chip" class:on={qr} onclick={() => (qr = !qr)} aria-pressed={qr}>QR code</button>{/if}

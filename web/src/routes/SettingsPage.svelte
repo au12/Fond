@@ -1,8 +1,12 @@
 <script lang="ts">
+  import ResolveSheet from '../components/ResolveSheet.svelte';
   import { api, del, get, post, put } from '../lib/api';
+  import { allFoods, foodById, type Rule } from '../lib/foods';
+  import { lookup, parseIngredient, show } from '../lib/ingredients';
+  import { dict, ensureFoods, removeRule, saveRule } from '../lib/weigh.svelte';
   import { app, go, loadCookbooks, loadRecipes, logout, oops, prefs, savePrefs, setSession, timeAgo, toast } from '../lib/state.svelte';
   import { wakeSupported } from '../lib/wake';
-  import { Bot, Copy, Download, KeyRound, LogOut, Settings, Smartphone, Trash, Upload, Users } from '../lib/icons';
+  import { Bot, ChevronRight, Copy, Download, KeyRound, Loader, LogOut, Scale, Settings, Smartphone, Trash, Upload, Users, Wand, X } from '../lib/icons';
   import type { User } from '../lib/types';
 
   let { tab }: { tab: string } = $props();
@@ -11,7 +15,7 @@
   const origin = $derived(app.origin || location.origin);
   const current = $derived(tab || 'prefs');
   const tabs = $derived([
-    ['prefs', 'Preferences', Settings], ['share', 'Save from your phone', Smartphone],
+    ['prefs', 'Preferences', Settings], ['weigh', 'Weighing', Scale], ['share', 'Save from your phone', Smartphone],
     ...(admin ? ([['import', 'Import', Upload], ['people', 'Household', Users], ['ai', 'AI assist', Bot]] as const) : []),
     ['account', 'Account', KeyRound],
   ] as const);
@@ -34,6 +38,66 @@
   let uploading = $state(0);
   // ---- ai
   let ai = $state({ baseUrl: '', model: '', apiKey: '', hasKey: false });
+  // ---- weighing
+  let libraryLines = $state<{ t: string; n: number; r: number[] }[] | null>(null);
+  let fixing = $state(false);
+  let fixLine = $state('');
+  let asking = $state(false);
+  let hints = $state<Record<string, string>>({});
+
+  /** Every measured line in the library, sorted into what Fond can weigh and what it cannot. */
+  const audit = $derived.by(() => {
+    dict.rev;
+    if (!libraryLines || !dict.ready) return null;
+    const o = { scale: 1, system: 'metric' as const, weigh: true, fractions: true, flour: pf.flour };
+    let measured = 0;
+    let weighed = 0;
+    const missed = new Map<string, { name: string; shown: string; n: number; line: string; top: number; recipes: Set<number> }>();
+    for (const l of libraryLines) {
+      const p = parseIngredient(l.t);
+      const s = show(p, o);
+      if (!s.measurable) continue;
+      measured += l.n;
+      if (s.weighed) {
+        weighed += l.n;
+        continue;
+      }
+      const m = lookup(p);
+      const name = m.phrase || p.rest.toLowerCase();
+      const e = missed.get(name) ?? { name, shown: name, n: 0, line: l.t, top: 0, recipes: new Set<number>() };
+      e.n += l.n;
+      if (l.n > e.top) [e.top, e.line, e.shown] = [l.n, l.t, (m.name || name).toLowerCase()];
+      l.r.forEach((id) => e.recipes.add(id));
+      missed.set(name, e);
+    }
+    return { measured, weighed, missed: [...missed.values()].sort((a, b) => b.n - a.n) };
+  });
+  const describe = (r: Rule) =>
+    r.action === 'skip' ? 'left as written' : r.action === 'map' ? `weighed like ${foodById(r.foodId ?? '')?.n ?? r.foodId}` : r.gPerMl ? `${Math.round(r.gPerMl * 236.588)} g a cup` : `${r.gEach} g each`;
+
+  async function askAll() {
+    if (!audit) return;
+    asking = true;
+    try {
+      const names = audit.missed.slice(0, 40).map((x) => x.name);
+      const res = await post<{ suggestions: Record<string, string> }>('/food-rules/suggest', { phrases: names, foods: allFoods().filter((f) => !f.z).map((f) => [f.id, f.n]) });
+      hints = res.suggestions;
+      const n = Object.keys(hints).length;
+      toast(n ? `${n} suggestion${n === 1 ? '' : 's'} to look over` : 'The model found nothing close enough');
+    } catch (err) {
+      oops(err);
+    } finally {
+      asking = false;
+    }
+  }
+  async function accept(name: string) {
+    try {
+      await saveRule({ phrase: audit?.missed.find((x) => x.name === name)?.shown ?? name, action: 'map', foodId: hints[name], source: 'ai' });
+      delete hints[name];
+    } catch (err) {
+      oops(err);
+    }
+  }
 
   $effect(() => {
     if (current === 'account' || current === 'share') {
@@ -43,6 +107,10 @@
     if (current === 'people' && admin) get('/users').then((x) => (users = x)).catch(oops);
     if (current === 'import' && admin) get('/import/local').then((x) => (localFiles = x)).catch(() => {});
     if (current === 'ai' && admin) get('/settings/ai').then((x) => (ai = { ...x, apiKey: '' })).catch(() => {});
+    if (current === 'weigh') {
+      ensureFoods();
+      get('/ingredient-lines').then((x) => (libraryLines = x.lines)).catch(() => {});
+    }
   });
 
   async function saveName(e: SubmitEvent) {
@@ -197,10 +265,6 @@
             </div>
           </div>
           <div class="opt">
-            <div><b>Weigh instead of scooping</b><span>Show flour, sugar and other staples by weight when a recipe gives cups. Uses standard densities, so treat the numbers as close estimates.</span></div>
-            <button class="switch" role="switch" aria-checked={pf.weigh} aria-label="Prefer weights" onclick={() => savePrefs({ weigh: !pf.weigh })}></button>
-          </div>
-          <div class="opt">
             <div><b>Oven temperatures</b><span>Convert temperatures written inside the steps.</span></div>
             <div class="seg">
               {#each [['original', 'Follow units'], ['C', '°C'], ['F', '°F']] as [v, l]}<button class:on={pf.temp === v} onclick={() => savePrefs({ temp: v as any })}>{l}</button>{/each}
@@ -227,6 +291,81 @@
               {#each [['auto', 'Match device'], ['light', 'Light'], ['dark', 'Dark']] as [v, l]}<button class:on={pf.theme === v} onclick={() => savePrefs({ theme: v as any })}>{l}</button>{/each}
             </div>
           </div>
+        </section>
+      {:else if current === 'weigh'}
+        <section>
+          <h2>Weighing</h2>
+          <p class="muted">Fond can show cups and spoons as grams. The <b>Weigh</b> button on a recipe does it for that recipe; this sets how recipes open.</p>
+          <div class="opt">
+            <div><b>Weigh instead of scooping</b><span>Open every recipe with volumes shown as weights. Counted things, like 3 eggs, keep their count and gain a weight beside it.</span></div>
+            <button class="switch" role="switch" aria-checked={pf.weigh} aria-label="Prefer weights" onclick={() => savePrefs({ weigh: !pf.weigh })}></button>
+          </div>
+          <div class="opt">
+            <div><b>A cup of flour</b><span>How you fill the cup when a recipe gives no weight. Spooned and levelled is King Arthur’s standard. Dipping the cup into the bag packs in about a fifth more.</span></div>
+            <div class="seg">
+              {#each [['spoon', 'Spooned · 120 g'], ['dip', 'Dipped · 142 g']] as [v, l]}<button class:on={pf.flour === v} onclick={() => savePrefs({ flour: v as any })}>{l}</button>{/each}
+            </div>
+          </div>
+        </section>
+        <section>
+          <h2>What Fond couldn’t weigh</h2>
+          {#if !audit}
+            <p class="muted">Looking through your recipes…</p>
+          {:else if audit.measured === 0}
+            <p class="muted">No recipe measures anything by volume yet.</p>
+          {:else}
+            <p class="muted">
+              Fond can weigh <b class="num">{audit.weighed.toLocaleString()} of {audit.measured.toLocaleString()}</b> measured lines in your recipes ({Math.floor((100 * audit.weighed) / audit.measured)}%).
+              {#if audit.missed.length}Teach it one of these and every recipe that uses it follows.{:else}Nothing is missing.{/if}
+            </p>
+            {#if audit.missed.length}
+              <ul class="list queue">
+                {#each audit.missed.slice(0, 60) as x (x.name)}
+                  <li>
+                    <button class="grow qrow" onclick={() => { fixLine = x.line; fixing = true; }}>
+                      <b>{x.shown}</b>
+                      <span class="hint">{x.n === 1 ? 'Once' : `${x.n} times`}, as in “{x.line}”</span>
+                    </button>
+                    {#if hints[x.name]}
+                      <span class="suggest"><Wand />like {foodById(hints[x.name])?.n}?</span>
+                      <button class="btn sm" onclick={() => accept(x.name)}>Use</button>
+                      <button class="icon-btn" onclick={() => delete hints[x.name]} aria-label="Dismiss suggestion"><X /></button>
+                    {:else}
+                      <button class="icon-btn" onclick={() => { fixLine = x.line; fixing = true; }} aria-label={`Tell Fond how to weigh ${x.name}`}><ChevronRight /></button>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+              {#if audit.missed.length > 60}<p class="hint">And {audit.missed.length - 60} more, each used less often.</p>{/if}
+              {#if app.features.ai}
+                <button class="btn sm" style:width="fit-content" onclick={askAll} disabled={asking}>{#if asking}<span class="spin" style:display="inline-grid"><Loader /></span>{:else}<Wand />{/if}Suggest matches with AI</button>
+                <p class="hint">The model only suggests. Nothing changes until you choose <b>Use</b>.</p>
+              {/if}
+            {/if}
+          {/if}
+        </section>
+        <section>
+          <h2>Your corrections</h2>
+          <p class="muted">What your household has taught Fond. Everyone here sees the same weights, and so does anyone you share a recipe with.</p>
+          {#if dict.rules.length}
+            <ul class="list">
+              {#each dict.rules as rule (rule.phrase)}
+                <li>
+                  <div class="grow"><b>{rule.phrase}</b><span class="hint">{(dict.rev, describe(rule))}{rule.source === 'ai' ? ' · suggested by AI' : ''}</span></div>
+                  <button class="icon-btn" onclick={() => removeRule(rule).catch(oops)} aria-label={`Remove the correction for ${rule.phrase}`}><Trash /></button>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="hint">None yet. When Fond marks an ingredient with a <b>?</b>, tap it to say what it is.</p>
+          {/if}
+        </section>
+        <section>
+          <h2>Where the weights come from</h2>
+          <p class="muted">
+            Fond carries its own table of {(dict.rev, allFoods().length) || 'about 250'} foods, built from laboratory measurements in USDA FoodData Central (SR Legacy and FNDDS) and the AUSNUT 2023 food measures, cross-checked against each other and against the weight charts King Arthur Baking and America’s Test Kitchen publish. Where the sources disagree by more than a tenth, Fond shows the weight with ≈.
+          </p>
+          <p class="hint">USDA data is in the public domain. AUSNUT 2023 is © Food Standards Australia New Zealand, used under CC BY 4.0. {dict.version}</p>
         </section>
       {:else if current === 'share'}
         <section>
@@ -401,6 +540,8 @@
   </div>
 </div>
 
+<ResolveSheet bind:open={fixing} line={fixLine} options={{ flour: pf.flour }} />
+
 <style>
   .settings { width: min(1040px, 100%); }
   .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; margin-top: 24px; align-items: start; }
@@ -419,6 +560,13 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .list li { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .list li > div { display: grid; }
+  .qrow { display: grid; text-align: left; }
+  .opt .seg { flex: none; }
+  .opt .seg button { white-space: nowrap; }
+  .queue li { padding: 9px 0; }
+  .queue :global(.icon-btn) { width: 36px; height: 36px; }
+  .suggest { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; background: var(--butter-soft); font-size: 0.84rem; font-weight: 600; white-space: nowrap; }
+  .suggest :global(svg) { width: 13px; height: 13px; }
   .steps { list-style: decimal; padding-left: 22px; display: grid; gap: 14px; line-height: 1.55; }
   .steps li::marker { font: 600 1.1rem var(--serif); color: var(--bay); }
   .code { display: inline-block; padding: 3px 8px; border-radius: 6px; background: var(--sunk); font: 500 0.82rem ui-monospace, 'SF Mono', Menlo, Consolas, monospace; word-break: break-all; }

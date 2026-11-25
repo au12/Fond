@@ -2,24 +2,32 @@
   import { onDestroy } from 'svelte';
   import { slide } from 'svelte/transition';
   import Photo from '../components/Photo.svelte';
+  import ResolveSheet from '../components/ResolveSheet.svelte';
   import Rich from '../components/Rich.svelte';
   import Sheet from '../components/Sheet.svelte';
   import ShareSheet from '../components/ShareSheet.svelte';
   import { del, get, post, put } from '../lib/api';
   import { cookState, resetCook, saveCook } from '../lib/cook.svelte';
-  import { bakers, formatNumber, parseIngredient, show, type System } from '../lib/ingredients';
-  import { app, go, loadCookbooks, loadRecipes, oops, prefs, recipePath, timeAgo, toast } from '../lib/state.svelte';
+  import { bakers, formatNumber, parseIngredient, show, withWeight, type Fix, type System } from '../lib/ingredients';
+  import { saltFor } from '../lib/salt';
+  import { app, go, loadCookbooks, loadRecipes, oops, prefs, recipePath, savePrefs, timeAgo, toast } from '../lib/state.svelte';
   import { clock, minutesLabel, tokenize } from '../lib/steps';
   import { left, startTimer, timerFor, toggleTimer } from '../lib/timers.svelte';
   import { keepAwake } from '../lib/wake';
-  import { ArrowLeft, BookPlus, Check, Ellipsis, ExternalLink, Heart, ListPlus, Minus, Pencil, Percent, Plus, Printer, RotateCcw, Share, Star, Timer, Trash, Wheat } from '../lib/icons';
-  import type { Recipe } from '../lib/types';
+  import { dict, ensureFoods, weighOptions } from '../lib/weigh.svelte';
+  import { ArrowLeft, BookPlus, Check, ChevronRight, CircleHelp, Ellipsis, ExternalLink, Heart, History, ListPlus, Minus, Pencil, Percent, Plus, Printer, RotateCcw, Scale, Share, Star, Timer, Trash, Wheat, X } from '../lib/icons';
+  import type { Extra, Recipe } from '../lib/types';
 
   let { id }: { id: number } = $props();
   let r = $state<Recipe | null>(null);
   let missing = $state(false);
   let system = $state<System>(prefs().system);
   let baker = $state(false);
+  let weighing = $state(prefs().weigh);
+  let weightsOpen = $state(false);
+  let resolveOpen = $state(false);
+  let resolveLine = $state('');
+  let writing = $state(false);
   let menu = $state(false);
   let sharing = $state(false);
   let booksOpen = $state(false);
@@ -31,6 +39,7 @@
 
   const cook = cookState(id);
   const pf = $derived(prefs());
+  ensureFoods();
 
   get<Recipe>(`/recipes/${id}`)
     .then((x) => {
@@ -47,11 +56,22 @@
     document.title = 'Fond';
   });
 
-  const opts = $derived({ scale: cook.scale, system, weigh: pf.weigh, fractions: pf.fractions });
+  // How this recipe is weighed: the reader's flour habit, the recipe's own corrections and its salt.
+  const wopts = $derived((dict.rev, weighOptions(r, pf)));
+  const opts = $derived({ scale: cook.scale, system, weigh: weighing, fractions: pf.fractions, ...wopts });
   const parsed = $derived((r?.ingredients ?? []).map((l) => (l.h ? null : parseIngredient(l.text))));
   const items = $derived(parsed.filter((p) => p != null));
-  const bake = $derived(bakers(items, r?.extra?.flour ?? {}));
+  const shown = $derived(parsed.map((p) => (p ? show(p, opts) : null)));
+  const bake = $derived(bakers(items, { ...wopts, flourLines: r?.extra?.flour ?? {}, starter: r?.extra?.starter }));
   const canBake = $derived(bake.flour > 0 && bake.rows.filter((x) => x.grams != null).length >= 2);
+  // What weighing can and cannot do for this recipe, whichever view is showing.
+  const byWeight = $derived(parsed.map((p) => (p ? show(p, { ...opts, system: 'metric', weigh: true }) : null)));
+  const measurable = $derived(byWeight.filter((x) => x?.measurable).length);
+  const weighed = $derived(byWeight.filter((x) => x?.weighed).length);
+  const salt = $derived((dict.rev, r && dict.ready ? saltFor(r, { flour: pf.flour, fixes: r.extra?.fixes }) : null));
+  const writable = $derived(items.filter((p) => withWeight(p, wopts) != null).length);
+  // Fractions of a gram want a finer scale than most kitchens have; say so once.
+  const tinyWeights = $derived(weighing && !pf.seen?.smallWeights && byWeight.some((x) => x?.estimated && x.grams != null && x.grams < 2));
   const stepNumbers = $derived.by(() => {
     let n = 0;
     return (r?.steps ?? []).map((s) => (s.h ? 0 : ++n));
@@ -186,17 +206,77 @@
       oops(e);
     }
   }
-  async function toggleFlour(raw: string, on: boolean) {
+  /** Saves something Fond remembers about this recipe. It is not a new version. */
+  async function saveExtra(patch: Partial<Extra>) {
     if (!r) return;
-    r.extra = { ...(r.extra ?? {}), flour: { ...(r.extra?.flour ?? {}), [raw]: on } };
-    put(`/recipes/${id}`, r).catch(oops);
+    r.extra = { ...(r.extra ?? {}), ...patch };
+    try {
+      await put(`/recipes/${id}`, r);
+    } catch (e) {
+      oops(e);
+    }
   }
+  const toggleFlour = (raw: string, on: boolean) => saveExtra({ flour: { ...(r?.extra?.flour ?? {}), [raw]: on } });
   function toggleBaker() {
-    if (!r) return;
     baker = !baker;
-    r.extra = { ...(r.extra ?? {}), baker };
-    put(`/recipes/${id}`, r).catch(oops);
+    saveExtra({ baker });
   }
+  async function setFix(raw: string, fix: Fix | null) {
+    const fixes = { ...(r?.extra?.fixes ?? {}) };
+    if (fix) fixes[raw] = fix;
+    else delete fixes[raw];
+    await saveExtra({ fixes });
+  }
+  function setStarter(v: number) {
+    if (v > 0 && v <= 500) saveExtra({ starter: Math.round(v) });
+  }
+  function resolve(line: string) {
+    resolveLine = line;
+    resolveOpen = true;
+  }
+
+  /** Writes each weight into its line, "1 cup (120 g) flour", as a new version of the recipe. */
+  async function writeWeights() {
+    if (!r || writing) return;
+    const before = r.version;
+    const moved = new Map<string, string>();
+    const ingredients = r.ingredients.map((l, i) => {
+      const next = l.h ? null : withWeight(parsed[i]!, wopts);
+      if (!next) return l;
+      moved.set(parsed[i]!.raw, next);
+      return { ...l, text: next };
+    });
+    if (!moved.size) return;
+    // What Fond remembers about a line is filed under the line's text; carry it over.
+    const rekey = <T,>(m: Record<string, T> | undefined) => (m ? Object.fromEntries(Object.entries(m).map(([k, v]) => [moved.get(k) ?? k, v])) : undefined);
+    writing = true;
+    try {
+      const saved = await put<Recipe>(`/recipes/${id}`, {
+        ...r, ingredients, versionNote: 'Weights added',
+        extra: { ...(r.extra ?? {}), flour: rekey(r.extra?.flour), fixes: rekey(r.extra?.fixes) },
+      });
+      saved.shareToken ??= '';
+      r = saved;
+      weightsOpen = false;
+      toast(`Weights written into ${moved.size} ${moved.size === 1 ? 'line' : 'lines'}`, { action: { label: 'Undo', run: () => restore(before) } });
+    } catch (e) {
+      oops(e);
+    } finally {
+      writing = false;
+    }
+  }
+  async function restore(version: number) {
+    try {
+      const saved = await post<Recipe>(`/recipes/${id}/versions/${version}/restore`);
+      saved.shareToken ??= '';
+      r = saved;
+      toast(`Back to version ${version}`);
+    } catch (e) {
+      oops(e);
+    }
+  }
+  const brandName = (b: 'dc' | 'morton') => (b === 'dc' ? 'Diamond Crystal' : 'Morton');
+  const g = (v: number) => (v >= 10 ? String(Math.round(v)) : String(+v.toFixed(v < 1 ? 2 : 1)));
   const clean = (s: string) => s.replace(/\*\*|__/g, '');
   const facts = $derived(
     r ? ([['Prep', minutesLabel(r.prepMin)], ['Cook', minutesLabel(r.cookMin)], ['Total', minutesLabel(r.totalMin)], ['Makes', yieldText]] as const).filter((f) => f[1]) : [],
@@ -215,14 +295,15 @@
       <button class="icon-btn heart" class:on={r.favorite} class:pop={heartPop} onanimationend={() => (heartPop = false)} onclick={fav} aria-label="Favorite" aria-pressed={r.favorite}><Heart /></button>
       <button class="icon-btn" class:on={r.cookbooks.length > 0} onclick={() => (booksOpen = true)} aria-label="Add to a cookbook" title="Cookbooks"><BookPlus /></button>
       <button class="icon-btn" class:on={!!r.shareToken} onclick={() => (sharing = true)} aria-label="Share" title="Share"><Share /></button>
-      <a class="icon-btn deskonly" href={`${recipePath(r)}/print`} aria-label="Print" title="Print"><Printer /></a>
+      <a class="icon-btn deskonly" href={`${recipePath(r)}/print?weigh=${weighing ? 1 : 0}`} aria-label="Print" title="Print"><Printer /></a>
       <a class="icon-btn" href={`${recipePath(r)}/edit`} aria-label="Edit" title="Edit"><Pencil /></a>
       <div style:position="relative">
         <button class="icon-btn" onclick={(e) => { e.stopPropagation(); menu = !menu; }} aria-label="More" aria-expanded={menu}><Ellipsis /></button>
         {#if menu}
           <div class="menu" style="right:0;top:46px" transition:slide={{ duration: 140 }}>
-            <a href={`${recipePath(r)}/print`}><Printer />Print or save as PDF</a>
+            <a href={`${recipePath(r)}/print?weigh=${weighing ? 1 : 0}`}><Printer />Print or save as PDF</a>
             <button onclick={openShop}><ListPlus />Add to shopping list</button>
+            <a href={`${recipePath(r)}/history`}><History />History{r.version > 1 ? ` · version ${r.version}` : ''}</a>
             {#if progress}<button onclick={() => resetCook(id)}><RotateCcw />Clear my progress</button>{/if}
             <button class="danger" onclick={remove}><Trash />Delete recipe</button>
           </div>
@@ -258,6 +339,7 @@
       </div>
       {#if cook.scale !== 1}<button class="btn sm quiet" onclick={() => setScale(1)}><RotateCcw />Original</button>{/if}
       <div class="grow"></div>
+      {#if measurable > 0}<button class="chip" class:on={weighing} onclick={() => (weighing = !weighing)} aria-pressed={weighing} title="Show cups and spoons as weights"><Scale />Weigh</button>{/if}
       {#if canBake}<button class="chip" class:on={baker} onclick={toggleBaker} aria-pressed={baker}><Percent />Baker’s %</button>{/if}
       <div class="seg" role="group" aria-label="Units">
         <button class:on={system === 'original'} onclick={() => (system = 'original')}>As written</button>
@@ -269,11 +351,34 @@
     <div class="cols">
       <section class="ingredients" aria-label="Ingredients">
         <h2>Ingredients</h2>
+        {#if weighing && measurable > 0}
+          <button class="weighline" onclick={() => (weightsOpen = true)} transition:slide={{ duration: 160 }}>
+            <Scale />
+            <span><b class="num">{weighed} of {measurable}</b> by weight{#if weighed < measurable}<span class="todo">{measurable - weighed} to look at</span>{/if}</span>
+            <ChevronRight />
+          </button>
+        {/if}
+        {#if tinyWeights}
+          <div class="tip" transition:slide={{ duration: 160 }}>
+            <p>Amounts under a gram or two need a scale that reads to 0.01 g. Without one, the spoon measures in “As written” are the safer guide.</p>
+            <button class="icon-btn" onclick={() => savePrefs({ seen: { ...pf.seen, smallWeights: true } })} aria-label="Got it" title="Got it"><X /></button>
+          </div>
+        {/if}
         {#if baker && canBake}
           <div class="bakerbox" transition:slide={{ duration: 200 }}>
             <label><span>Flour</span><input class="num" type="number" inputmode="decimal" min="1" value={Math.round(bake.flour * cook.scale)} onchange={(e) => setFlour(+e.currentTarget.value)} aria-label="Total flour in grams" /> g</label>
             {#if bake.hydration != null}<div><span>Hydration</span><b class="num">{Math.round(bake.hydration)}%</b></div>{/if}
+            {#if bake.saltPercent != null}<div><span>Salt</span><b class="num">{salt && !r.extra?.salt ? '≈ ' : ''}{+bake.saltPercent.toFixed(1)}%</b></div>{/if}
             <div><span>Total</span><b class="num">{Math.round(bake.total * cook.scale)} g</b></div>
+            {#if bake.hasStarter}
+              <label title="How wet the starter or preferment is: water as a percentage of its flour"><span>Starter at</span><input class="num" type="number" inputmode="decimal" min="40" max="500" value={r.extra?.starter ?? 100} onchange={(e) => setStarter(+e.currentTarget.value)} aria-label="Starter hydration in percent" style:width="68px" /> %</label>
+            {/if}
+            {#if !bake.complete || bake.missing.length}
+              <p class="gap">
+                {#if !bake.complete}Some of the flour has no weight yet, so these figures are too low.{:else}Left out, with no weight yet: {bake.missing.slice(0, 3).join(', ')}{bake.missing.length > 3 ? ` and ${bake.missing.length - 3} more` : ''}.{/if}
+                <button onclick={() => { weighing = true; weightsOpen = true; }}>Fix</button>
+              </p>
+            {/if}
           </div>
         {/if}
         <ul>
@@ -282,13 +387,16 @@
               <li class="group">{line.text}</li>
             {:else}
               {@const p = parsed[i]!}
-              {@const s = show(p, opts)}
+              {@const s = shown[i]!}
               {@const row = bake.rows[items.indexOf(p)]}
               <li class:done={cook.ing[i]}>
                 <button class="ing" onclick={() => tickIng(i)} aria-pressed={!!cook.ing[i]}>
                   <span class="box"><Check /></span>
-                  <span class="txt">{#if s.measure}<b class="num" class:conv={s.converted} title={s.converted ? `Converted from ${s.from}${s.estimated ? ' using a standard density' : ''}` : undefined}>{s.measure}</b>{' '}{/if}{s.rest}</span>
+                  <span class="txt">{#if s.measure}<b class="num" class:conv={s.converted} title={s.converted ? (s.estimated && s.basis ? `${s.from} · ${s.basis}` : `Converted from ${s.from}`) : undefined}>{s.estimated && s.approx ? '≈ ' : ''}{s.measure}</b>{' '}{/if}{s.rest}{#if s.also}<span class="also num" title={s.basis}>{s.approx ? '≈ ' : ''}{s.also}</span>{/if}</span>
                 </button>
+                {#if weighing && s.measurable && !s.weighed}
+                  <button class="ask" onclick={() => resolve(line.text)} aria-label="Fond can’t weigh this yet. Tell it how." title="Fond can’t weigh this yet"><CircleHelp /></button>
+                {/if}
                 {#if baker && canBake}
                   <button class="pct num" class:flour={row.flour} onclick={() => toggleFlour(p.raw, !row.flour)} title={row.flour ? 'Counted as flour. Tap to change.' : 'Tap to count this as flour'}>
                     {#if row.flour}<Wheat />{/if}{row.percent != null ? (row.percent < 10 ? +row.percent.toFixed(1) : Math.round(row.percent)) + '%' : '–'}
@@ -345,6 +453,7 @@
             {/each}
           </div>
         </footer>
+        <a class="version" href={`${recipePath(r)}/history`}><History />Version {r.version}<span>· {r.version > 1 ? `changed ${timeAgo(r.updatedAt)}` : `saved ${timeAgo(r.createdAt)}`}</span></a>
       </section>
     </div>
   </article>
@@ -369,6 +478,51 @@
       </form>
     </div>
   </Sheet>
+
+  <Sheet bind:open={weightsOpen} title="Weights">
+    <div class="stack">
+      <p class="muted">
+        {#if measurable === 0}Nothing in this recipe is measured by volume.{:else if weighed === measurable}Every measured ingredient has a weight.{:else}<b class="num">{weighed} of {measurable}</b> measured ingredients have a weight. Tap one marked <b>?</b> to tell Fond what it is.{/if}
+      </p>
+      {#if salt || r.extra?.salt}
+        <div class="saltcard">
+          <b>Kosher salt</b>
+          <span>
+            {#if r.extra?.salt}You set this recipe to {brandName(r.extra.salt)}.{:else if salt?.brand}Fond reads it as {brandName(salt.brand)} here, and marks the weight ≈ because it is a judgement.{:else}Fond can’t tell which brand this recipe means.{/if}
+            {salt?.facts ?? ''}
+            {#if !r.extra?.salt}{salt?.verdict ?? ''}{/if}
+          </span>
+          <div class="seg" role="group" aria-label="Which kosher salt">
+            <button class:on={r.extra?.salt === 'dc'} onclick={() => saveExtra({ salt: 'dc' })}>Diamond Crystal</button>
+            <button class:on={r.extra?.salt === 'morton'} onclick={() => saveExtra({ salt: 'morton' })}>Morton</button>
+            <button class:on={!r.extra?.salt} onclick={() => saveExtra({ salt: undefined })}>Let Fond judge</button>
+          </div>
+        </div>
+      {/if}
+      <div class="wlist">
+        {#each r.ingredients as line, i}
+          {@const w = byWeight[i]}
+          {#if !line.h && w && (w.measurable || w.grams != null || w.match?.skip)}
+            <button class="wrow" onclick={() => resolve(line.text)}>
+              <span class="grow">
+                <span>{line.text}</span>
+                <small>{#if w.match?.skip}Left as written{:else if w.grams == null}No weight yet{:else}{w.basis || 'Weighed as written'}{/if}</small>
+              </span>
+              {#if w.grams != null}<b class="num">{w.approx ? '≈ ' : ''}{g(w.grams)} g</b>{:else if w.measurable}<b class="q">?</b>{/if}
+              <ChevronRight />
+            </button>
+          {/if}
+        {/each}
+      </div>
+      {#if writable > 0}
+        <button class="btn primary" onclick={writeWeights} disabled={writing}><Scale />Write {writable === 1 ? 'the weight' : `${writable} weights`} into the recipe</button>
+        <p class="hint">Adds the weight after each volume, like “1 cup (120 g) flour”, so the recipe carries it into print, sharing and export. Estimates (≈) are left out. This becomes version {r.version + 1}, and the history can undo it.</p>
+      {/if}
+      {#if cook.scale !== 1}<p class="hint">Weights here are for the amounts you are making now ({formatNumber(cook.scale, true)}× the recipe).</p>{/if}
+    </div>
+  </Sheet>
+
+  <ResolveSheet bind:open={resolveOpen} line={resolveLine} options={wopts} canScope onfix={setFix} />
 
   <Sheet bind:open={shopOpen} title="Add to shopping list">
     <div class="stack">
@@ -444,7 +598,42 @@
   .bakerbox { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 14px; margin-bottom: 8px; border-radius: var(--r-m); background: var(--butter-soft); font-size: 0.9rem; }
   .bakerbox span { color: var(--ink-2); margin-right: 6px; }
   .bakerbox input { width: 72px; height: 30px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); font-weight: 700; text-align: right; }
+  .bakerbox label { display: inline-flex; align-items: center; gap: 4px; }
+  .bakerbox .gap { flex-basis: 100%; font-size: 0.84rem; color: var(--ink-2); }
+  .bakerbox .gap button { margin-left: 4px; font-weight: 700; color: var(--bay); text-decoration: underline; text-underline-offset: 3px; }
+  .weighline { display: flex; align-items: center; gap: 8px; width: 100%; margin: -4px 0 8px; padding: 9px 12px; border-radius: var(--r-m); background: var(--wash); font-size: 0.9rem; color: var(--ink-2); text-align: left; transition: background 0.15s; }
+  .weighline:hover { background: color-mix(in srgb, var(--wash) 70%, var(--line-2)); }
+  .weighline span { flex: 1; }
+  .weighline b { color: var(--ink); }
+  .weighline .todo { color: var(--ink); font-weight: 600; }
+  .weighline .todo::before { content: '·'; margin: 0 7px; font-weight: 400; color: var(--ink-3); }
+  .weighline :global(svg) { flex: none; width: 16px; height: 16px; color: var(--bay); }
+  .weighline :global(svg:last-child) { color: var(--ink-3); }
+  .tip { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 8px; padding: 10px 6px 10px 14px; border-radius: var(--r-m); background: var(--butter-soft); font-size: 0.86rem; line-height: 1.45; }
+  .tip p { flex: 1; }
+  .tip .icon-btn { flex: none; width: 30px; height: 30px; margin-top: -3px; }
+  .tip :global(svg) { width: 15px; height: 15px; }
+  .also { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--wash); font-size: 0.82rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+  .done .also { opacity: 0.6; }
+  .ask { flex: none; display: grid; place-items: center; width: 38px; color: var(--ink-3); transition: color 0.15s, transform 0.2s var(--spring); }
+  .ask:hover { color: var(--bay); transform: scale(1.12); }
+  .ask :global(svg) { width: 18px; height: 18px; }
   .shop { margin: 12px 0 0 -8px; color: var(--bay); }
+  .version { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 0.84rem; font-weight: 600; color: var(--ink-3); transition: color 0.15s; }
+  .version:hover { color: var(--bay); }
+  .version span { font-weight: 400; }
+  .version :global(svg) { width: 14px; height: 14px; }
+  .saltcard { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r-m); background: var(--butter-soft); }
+  .saltcard span { font-size: 0.875rem; line-height: 1.5; color: var(--ink-2); }
+  .saltcard .seg { justify-self: start; background: color-mix(in srgb, var(--ink) 8%, transparent); max-width: 100%; overflow-x: auto; }
+  .wlist { display: grid; max-height: 44dvh; overflow: auto; }
+  .wrow { display: flex; align-items: center; gap: 12px; padding: 10px 2px; text-align: left; border-bottom: 1px solid var(--line); line-height: 1.35; transition: background 0.15s; }
+  .wrow:hover { background: var(--sunk); }
+  .wrow .grow { display: grid; gap: 1px; }
+  .wrow small { font-size: 0.78rem; color: var(--ink-3); }
+  .wrow b { white-space: nowrap; }
+  .wrow .q { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--butter); color: #2a2508; font-size: 0.85rem; }
+  .wrow :global(svg) { flex: none; width: 16px; height: 16px; color: var(--ink-3); }
 
   .note { margin: -4px 0 12px; font-size: 0.86rem; color: var(--ink-3); }
   .step { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); transition: opacity 0.3s; }

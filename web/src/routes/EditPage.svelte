@@ -1,7 +1,9 @@
 <script lang="ts">
   import TagInput from '../components/TagInput.svelte';
   import { api, del, get, img, post, put } from '../lib/api';
-  import { parseIngredient } from '../lib/ingredients';
+  import { parseIngredient, show } from '../lib/ingredients';
+  import { prefs } from '../lib/state.svelte';
+  import { dict, ensureFoods, weighOptions } from '../lib/weigh.svelte';
   import { app, go, loadRecipes, oops, recipePath, toast } from '../lib/state.svelte';
   import { minutesLabel } from '../lib/steps';
   import { ImagePlus, Loader, Trash } from '../lib/icons';
@@ -31,6 +33,7 @@
   let original: Recipe | null = null;
   let fileInput: HTMLInputElement;
   let dirty = $state(false);
+  let versionNote = $state('');
 
   const toText = (lines: Line[], sep: string) => lines.map((l) => (l.h ? '# ' + l.text : l.text)).join(sep);
 
@@ -79,7 +82,23 @@
       return { text: h ? b.replace(/^#+\s*/, '') : b.replace(/^(?:step\s*)?\d{1,2}[.):]\s+/i, ''), h };
     });
   }
-  const parsedPreview = $derived(ingredientLines().map((l) => ({ l, p: l.h ? null : parseIngredient(l.text) })));
+  // Alongside each line, the weight Fond would give it, so a name it cannot place shows up while typing.
+  ensureFoods();
+  const parsedPreview = $derived.by(() => {
+    dict.rev;
+    const lines = ingredientLines();
+    const o = { scale: 1, system: 'metric' as const, weigh: true, fractions: true, ...weighOptions({ title, tags, ingredients: lines, extra: original?.extra }, prefs()) };
+    return lines.map((l) => {
+      const p = l.h ? null : parseIngredient(l.text);
+      const w = p && dict.ready ? show(p, o) : null;
+      const grams = w?.grams != null && (w.estimated || w.also) ? `${w.approx ? '≈ ' : ''}${w.grams >= 10 ? Math.round(w.grams) : +w.grams.toFixed(1)} g` : '';
+      return { l, p, grams, unknown: !!w && w.measurable && !w.weighed };
+    });
+  });
+  const unknown = $derived(parsedPreview.filter((x) => x.unknown).length);
+  // Saving different ingredients or a different method starts a new version; other edits do not.
+  const flat = (lines: Line[]) => lines.map((l) => (l.h ? '#' : '') + l.text.replace(/\s+/g, ' ').trim()).join('\n');
+  const newVersion = $derived(!!original && loaded && (flat(ingredientLines()) !== flat(original.ingredients) || flat(stepLines()) !== flat(original.steps)));
 
   function pick(f: File | null | undefined) {
     if (!f || !f.type.startsWith('image/')) return;
@@ -103,6 +122,7 @@
       servings: parseFloat(servings) || parseFloat(yieldText) || 0,
       prepMin: minutes(prep), cookMin: minutes(cook), totalMin: minutes(total),
       ingredients: ingredientLines(), steps: stepLines(),
+      versionNote: newVersion ? versionNote.trim() : '',
     };
     try {
       const saved = id ? await put<Recipe>(`/recipes/${id}`, body) : await post<Recipe>('/recipes', body);
@@ -187,13 +207,14 @@
       <div class="field">
         <span>How Fond reads them</span>
         <ul class="parsed" aria-live="polite">
-          {#each parsedPreview as { l, p }}
+          {#each parsedPreview as { l, p, grams, unknown }}
             {#if l.h}<li class="h">{l.text}</li>
-            {:else if p}<li>{#if p.head}<b class="num">{p.prefix}{p.head}</b>{' '}{/if}{p.rest}{#if p.alt}<i> also {p.alt.qty} {p.alt.unit.one}</i>{/if}</li>{/if}
+            {:else if p}<li>{#if p.head}<b class="num">{p.prefix}{p.head}</b>{' '}{/if}{p.rest}{#if p.alt}<i> also {p.alt.qty} {p.alt.unit.one}</i>{/if}{#if grams}<span class="wt num">{grams}</span>{:else if unknown}<span class="wt none" title="Fond doesn’t know what this weighs. You can tell it from the recipe page.">no weight</span>{/if}</li>{/if}
           {:else}
             <li class="faint">Quantities and units are picked out automatically, so scaling and unit conversion just work.</li>
           {/each}
         </ul>
+        {#if unknown}<span class="hint">{unknown === 1 ? 'One line has' : `${unknown} lines have`} no weight yet. Open the recipe, turn on <b>Weigh</b> and tap the <b>?</b> to teach Fond, or write the weight in yourself, like “1 cup (140 g)”.</span>{/if}
       </div>
     </div>
 
@@ -202,6 +223,12 @@
       <textarea class="input" rows="8" use:grow={steps} bind:value={steps} placeholder={'Heat the oven to 375°F.\n\nMix the flour and salt, then rub in the butter.\n\nBake for 45 minutes.'}></textarea>
       <span class="hint">Leave a blank line between steps. Times like “45 minutes” become tappable timers. Start a line with # for a section heading.</span>
     </label>
+    {#if newVersion && original}
+      <label class="field vnote">
+        <span>What changed? <i>Optional. This save becomes version {original.version + 1}, and version {original.version} stays in the history.</i></span>
+        <input class="input" bind:value={versionNote} maxlength="120" placeholder="Less sugar, longer bake…" />
+      </label>
+    {/if}
     <label class="field"><span>Notes</span><textarea class="input" rows="3" use:grow={notes} bind:value={notes} placeholder="Substitutions, what to serve it with, what you’d change next time"></textarea></label>
     <div class="grid2 even">
       <label class="field"><span>Original link</span><input class="input" type="url" bind:value={sourceUrl} placeholder="https://…" /></label>
@@ -227,6 +254,9 @@
   .drop small { font-weight: 400; color: var(--ink-3); }
   .parsed { min-height: 120px; padding: 10px 14px; border-radius: var(--r-m); background: var(--sunk); line-height: 1.45; font-size: 0.95rem; }
   .parsed li { padding: 3px 0; }
+  .vnote i { font-weight: 400; font-style: normal; color: var(--ink-3); }
+  .wt { float: right; margin-left: 10px; font-size: 0.82rem; color: var(--ink-3); }
+  .wt.none { padding: 0 8px; border-radius: 999px; background: var(--butter-soft); color: var(--ink-2); font-weight: 600; cursor: help; }
   .parsed li.h { font: italic 600 1rem var(--serif); color: var(--ink-2); padding-top: 8px; }
   .parsed b { color: var(--bay); }
   .parsed i { color: var(--ink-3); font-size: 0.85em; }

@@ -467,6 +467,14 @@ const PLURALS: Record<string, string> = {
   tomato: 'tomatoes', potato: 'potatoes', orange: 'oranges', avocado: 'avocados', cucumber: 'cucumbers', scallion: 'scallions',
 };
 
+const SINGULARS: Record<string, string> = Object.fromEntries(Object.entries(PLURALS).map(([one, many]) => [many, one]));
+/** "large egg" ↔ "large eggs": fixes the noun's number when scaling crosses one. */
+function renumber(rest: string, table: Record<string, string>): string {
+  const name = rest.split(/[,(]/)[0];
+  const word = name.split(/\s+/).slice(0, 3).find((w) => table[w.toLowerCase()]);
+  return word ? rest.replace(word, table[word.toLowerCase()]) : rest;
+}
+
 export interface Shown {
   /** Quantity and unit, e.g. "1½ cups". Empty when the line has no measure. */
   measure: string;
@@ -493,14 +501,21 @@ export interface Shown {
   match: Match | null;
 }
 
-function basisFor(p: Parsed, w: Weight): string {
+function basisFor(p: Parsed, w: Weight, o: WeighOptions): string {
   const food = w.match?.food;
   if (w.how === 'author') return 'the author’s own weight';
+  if (w.how === 'size') return 'the size stated on the container';
   if (w.match?.rule?.action === 'custom') return 'your own measurement';
   if (!food) return '';
-  if (w.how === 'each') return `${food.n}, USDA typical weight`;
+  if (w.how === 'each') return `${food.n}, typical weight (USDA)`;
   const spoon = p.unit?.key === 'tsp' || p.unit?.key === 'tbsp';
   const per = spoon ? p.unit! : UNIT_BY_KEY.get('cup')!;
+  if (food.t === 'kosher') {
+    const brand = o.salt ? foodById(o.salt.brand === 'dc' ? 'salt-dc' : 'salt-morton') : null;
+    if (!brand?.d) return 'kosher salt, brand unknown: halfway between Diamond Crystal (2.8 g a teaspoon) and Morton (4.8 g)';
+    return `kosher salt, ${o.salt!.sure ? 'set to' : 'read as'} ${o.salt!.brand === 'dc' ? 'Diamond Crystal' : 'Morton'} · ${+(brand.d * UNIT_BY_KEY.get('tsp')!.base).toFixed(1)} g per tsp`;
+  }
+  if (o.flour === 'dip' && food.x?.dip) return `${food.n}, dipped and swept · ${Math.round(food.x.dip * per.base)} g per ${per.one}`;
   const state = w.match?.state && w.match.state !== food.ds ? `, ${w.match.state}` : '';
   const said = state || food.id === 'salt-kosher' ? '' : basisText(food, per.base);
   return `${food.n}${state}${said ? ` · ${said} g per ${per.one}` : ''}`;
@@ -522,7 +537,7 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
   out.match = m;
   if (w) {
     out.grams = w.g * o.scale;
-    out.basis = basisFor(p, w);
+    out.basis = basisFor(p, w, o);
   }
   const byVolume = unit?.kind === 'volume';
   const dens = byVolume && w?.how === 'density' ? w.g / volumeOf(p) : null;
@@ -593,7 +608,8 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
     let unitText = '';
     if (unit && unit.kind !== 'other' && unit.system === 'metric') {
       const more = p.more.reduce((s, x) => s + x.qty * x.unit.base, 0) * o.scale;
-      const r = unit.kind === 'weight' ? metricWeight(q * unit.base + more, qm != null ? qm * unit.base + more : null) : metricVolume(q * unit.base + more, qm != null ? qm * unit.base + more : null);
+      // A weight the recipe gives in grams stays exact; only conversions are rounded to the nearest five.
+      const r = unit.kind === 'weight' ? metricWeight(q * unit.base + more, qm != null ? qm * unit.base + more : null, true) : metricVolume(q * unit.base + more, qm != null ? qm * unit.base + more : null);
       [text, unitText] = [r.text, r.unit];
     } else if (unit && unit.kind === 'volume') {
       const more = p.more.reduce((s, x) => s + x.qty * x.unit.base, 0) * o.scale;
@@ -611,10 +627,8 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
       const f = (v: number) => formatNumber(v, true);
       text = f(q) + (qm != null ? '–' + f(qm) : '');
       if (unit) unitText = q > 1 || qm != null ? unit.many : unit.one;
-      else if (p.qty <= 1 && q > 1) {
-        const word = out.rest.match(/^([a-z]+)\b/);
-        if (word && PLURALS[word[1]]) out.rest = PLURALS[word[1]] + out.rest.slice(word[1].length);
-      }
+      else if (p.qty <= 1 && q > 1) out.rest = renumber(out.rest, PLURALS);
+      else if (p.qty > 1 && q <= 1 && qm == null) out.rest = renumber(out.rest, SINGULARS);
     }
     const size = p.size ? ' ' + p.size : '';
     out.measure = `${lead}${text}${size}${unitText ? ' ' + unitText : ''}`.trim();
@@ -624,7 +638,7 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
       const aq = a.qty * o.scale;
       const am = a.qtyMax != null ? a.qtyMax * o.scale : null;
       const r = a.unit.kind === 'weight'
-        ? a.unit.system === 'metric' ? metricWeight(aq * a.unit.base, am != null ? am * a.unit.base : null) : usWeight(aq * a.unit.base, am != null ? am * a.unit.base : null, o.fractions)
+        ? a.unit.system === 'metric' ? metricWeight(aq * a.unit.base, am != null ? am * a.unit.base : null, true) : usWeight(aq * a.unit.base, am != null ? am * a.unit.base : null, o.fractions)
         : a.unit.system === 'metric' ? metricVolume(aq * a.unit.base, am != null ? am * a.unit.base : null) : usVolume(aq * a.unit.base, am != null ? am * a.unit.base : null, o.fractions);
       out.measure += ` (${r.text} ${r.unit})`;
     }
@@ -645,7 +659,7 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
     out.approx = wantKind === 'weight' && !!w?.approx;
   }
   const r =
-    target === 'metric-w' ? metricWeight(baseQty, baseMax, out.estimated)
+    target === 'metric-w' ? metricWeight(baseQty, baseMax, out.estimated || (src.unit.kind === 'weight' && src.unit.system === 'metric'))
     : target === 'metric-v' ? metricVolume(baseQty, baseMax)
     : target === 'us-w' ? usWeight(baseQty, baseMax, o.fractions)
     : usVolume(baseQty, baseMax, o.fractions);
@@ -653,6 +667,14 @@ export function show(p: Parsed, o: DisplayOptions): Shown {
   out.converted = !usedAlt;
   out.from = usedAlt ? '' : p.head;
   return out;
+}
+
+/** How much a line measures out: millilitres, or a count of items. For "this much weighs…" */
+export function amountOf(p: Parsed): { ml: number } | { count: number } | null {
+  if (p.qty == null) return null;
+  if (p.unit?.kind === 'volume') return { ml: volumeOf(p) };
+  if (!p.unit || p.per) return { count: p.qtyMax != null ? (p.qty + p.qtyMax) / 2 : p.qty };
+  return null;
 }
 
 /** Millilitres in a volume line as written, including "plus 2 tablespoons". */

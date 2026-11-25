@@ -1,5 +1,6 @@
 import { get, post, put, setUnauthorizedHandler } from './api';
 import { DEFAULT_PREFS, type Card, type Cookbook, type Prefs, type User } from './types';
+import { ensureFoods, loadRules } from './weigh.svelte';
 
 export const app = $state({
   ready: false,
@@ -132,6 +133,9 @@ export function setSession(me: any) {
   applyTheme();
   loadRecipes();
   loadCookbooks();
+  loadRules();
+  // The ingredient dictionary is a chunk of its own; fetch it once the page has settled.
+  (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 800)))(() => ensureFoods());
 }
 
 export async function loadRecipes() {
