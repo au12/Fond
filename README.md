@@ -149,6 +149,8 @@ cd web && npm install && npm run build && cd ..   # build the client into web/di
 FOND_DATA=./data go run ./cmd/fond                 # http://localhost:8080
 ```
 
+Releases are cut by changing the number in `VERSION`; the workflow then publishes the versioned image and creates the GitHub release.
+
 For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots.
 
 The server is Go with SQLite (pure Go, FTS5 for search). The client is Svelte 5. Typefaces are Vollkorn and Figtree, icons are Lucide, all under open licenses. Demo photos in the screenshots are from Unsplash.
