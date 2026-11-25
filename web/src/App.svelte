@@ -30,7 +30,7 @@
       const raw = [q.get('url'), q.get('text'), q.get('title')].filter(Boolean).join(' ');
       const link = raw.match(/https?:\/\/\S+/)?.[0] ?? '';
       go('/', { replace: true });
-      openAdd(link || raw);
+      openAdd(link || raw, q.get('clip') ?? '');
     }
   });
 </script>

@@ -4,6 +4,8 @@
 
 ![The recipe library](docs/screenshots/desktop-library.jpg)
 
+![A recipe](docs/screenshots/desktop-recipe.jpg)
+
 *Fond* is the browned, caramelized layer left in the pan: the part every good sauce is built on.
 
 ## Why Fond
@@ -69,7 +71,7 @@ Point the proxy at port `8080` and set `FOND_BASE_URL` to the public address so 
 
 **iPhone and iPad.** Safari does not let web apps appear in the share sheet, so Fond uses a two-action Shortcut. **Settings → Save from your phone** creates a token and shows the exact values to paste; after that, "Save to Fond" sits in Safari's share sheet. Build it once and share the shortcut with the rest of the household.
 
-**Desktop.** Drag the bookmarklet from the same settings page to your bookmarks bar, or just paste a link on the library page.
+**Desktop.** Drag the “Save to Fond” bookmark from the same settings page to your bookmarks bar, or just paste a link on the library page. The bookmark hands Fond the page your browser has already loaded, so it also works behind logins and on sites that refuse requests from servers.
 
 ## How importing works
 
@@ -84,6 +86,8 @@ Measured against the 1,149 saved real-world pages from 659 sites in the [recipe-
 | Nothing found | 1.5 % |
 
 Reproduce it with `FOND_CORPUS=/path/to/recipe-scrapers/tests/test_data go test ./internal/scrape -run Corpus -v`.
+
+Some large sites turn away requests that come from servers. Fond does not pose as a search crawler to get around that. It tells you, and the bookmark (or an optional extra step in the iOS Shortcut) sends the page your own browser loaded instead.
 
 **Optional AI assist.** Connect any OpenAI-compatible API (Ollama works) in **Settings → AI assist** and Fond will use it for the pages that have no recipe markup at all, for messy pasted text, and to read recipes from photos with a vision model. Nothing is sent anywhere unless you configure this.
 

@@ -169,6 +169,9 @@
     }
   }
   const shareToken = $derived(freshToken || '<your token>');
+  const bookmarklet = $derived(
+    `javascript:(()=>{const f=document.createElement('form');f.method='POST';f.action='${origin}/share';f.target='_blank';for(const[k,v]of[['url',location.href],['html',document.documentElement.outerHTML.slice(0,3500000)]]){const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;f.appendChild(i)}document.body.appendChild(f);f.submit();f.remove()})()`,
+  );
   const device = (ua: string) => (/iPhone|iPad/.test(ua) ? 'iPhone or iPad' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : 'Browser');
 </script>
 
@@ -257,6 +260,7 @@
               </dl>
             </li>
             <li>Optional: add <b>Show Notification</b> with the text “Saved to Fond”.</li>
+            <li>Optional, for sites that turn away automated requests: put a second <b>Get Contents of URL</b> action first, with its URL set to <b>Shortcut Input</b>, and add a second JSON text field <code class="code">html</code> = <b>Contents of URL</b>. Your phone then fetches the page itself and hands it to Fond.</li>
           </ol>
           <p class="hint">Made it once? Share the shortcut from the Shortcuts app to anyone else in the house, then swap in their own token.</p>
         </section>
@@ -264,8 +268,8 @@
           <h2>Any desktop browser</h2>
           <p class="muted">Drag this button to your bookmarks bar. Click it on a recipe page to save it.</p>
           <!-- svelte-ignore a11y_invalid_attribute -->
-          <a class="btn" href={`javascript:location.href='${origin}/share?url='+encodeURIComponent(location.href)`} onclick={(e) => e.preventDefault()}>Save to Fond</a>
-          <p class="hint" style:margin-top="10px">On the Recipes page you can also just paste a link with Ctrl/⌘ V.</p>
+          <a class="btn" href={bookmarklet} onclick={(e) => e.preventDefault()}>Save to Fond</a>
+          <p class="hint" style:margin-top="10px">The bookmark sends Fond the page your browser has already loaded, so it also works on sites that turn away automated requests and on pages behind a login. On the Recipes page you can also just paste a link with Ctrl/⌘ V.</p>
         </section>
       {:else if current === 'import' && admin}
         <section>

@@ -54,7 +54,14 @@ func isPublicIP(ip net.IP) bool {
 // only for admin-supplied endpoints (a Mealie server, a local AI endpoint).
 func NewFetcher(allowPrivate bool) *Fetcher {
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
-	if !allowPrivate {
+	// With an outbound HTTP proxy configured the dialer only ever sees the
+	// proxy's address, so the guard moves to vet(), which checks every host
+	// (including each redirect) before a request is made.
+	proxied := false
+	if u, err := http.ProxyFromEnvironment(&http.Request{URL: &url.URL{Scheme: "https", Host: "example.com"}}); err == nil && u != nil {
+		proxied = true
+	}
+	if !allowPrivate && !proxied {
 		dialer.Control = func(network, address string, _ syscall.RawConn) error {
 			host, _, err := net.SplitHostPort(address)
 			if err != nil {
@@ -76,7 +83,8 @@ func NewFetcher(allowPrivate bool) *Fetcher {
 		MaxIdleConns:           8,
 		IdleConnTimeout:        60 * time.Second,
 	}
-	return &Fetcher{allowPrivate: allowPrivate, client: &http.Client{
+	f := &Fetcher{allowPrivate: allowPrivate}
+	f.client = &http.Client{
 		Transport: tr,
 		Timeout:   45 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -86,14 +94,10 @@ func NewFetcher(allowPrivate bool) *Fetcher {
 			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
 				return errors.New("redirect to unsupported scheme")
 			}
-			if !allowPrivate {
-				if ip := net.ParseIP(req.URL.Hostname()); ip != nil && !isPublicIP(ip) {
-					return ErrBlockedAddress
-				}
-			}
-			return nil
+			return f.vet(req.Context(), req.URL.Hostname())
 		},
-	}}
+	}
+	return f
 }
 
 // vet resolves a host up front and refuses internal addresses. The dial-time

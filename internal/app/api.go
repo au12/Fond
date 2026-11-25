@@ -19,6 +19,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /img/{name}", s.handleImage)
 	m.HandleFunc("GET /s/{token}", s.sharedRecipePage)
 	m.HandleFunc("GET /c/{token}", s.sharedCookbookPage)
+	m.HandleFunc("POST /share", s.receiveClip)
 	m.HandleFunc("/", s.handleStatic)
 
 	m.HandleFunc("GET /api/state", s.open(s.state))

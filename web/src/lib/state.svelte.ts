@@ -15,6 +15,7 @@ export const app = $state({
   cookbooks: [] as Cookbook[],
   adding: false,
   addUrl: '',
+  addClip: '',
   online: navigator.onLine,
 });
 
@@ -152,6 +153,8 @@ export async function loadCookbooks() {
 
 export async function logout() {
   await post('/auth/logout').catch(() => {});
+  // Don't leave this person's recipes readable offline on a shared device.
+  if ('caches' in window) caches.keys().then((ks) => ks.filter((k) => k.endsWith('-data')).forEach((k) => caches.delete(k))).catch(() => {});
   app.user = null;
   app.recipes = [];
   app.recipesLoaded = false;
@@ -162,8 +165,9 @@ export function recipePath(r: { id: number; slug: string }) {
   return `/r/${r.id}-${r.slug}`;
 }
 
-export function openAdd(url = '') {
+export function openAdd(url = '', clip = '') {
   app.addUrl = url;
+  app.addClip = clip;
   app.adding = true;
 }
 

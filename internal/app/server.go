@@ -65,6 +65,7 @@ type Server struct {
 	limit   *limiter
 	cop     *http.CrossOriginProtection
 	jobs    sync.Map
+	clips   sync.Map
 	mux     *http.ServeMux
 }
 

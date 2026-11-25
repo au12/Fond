@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Sheet from './Sheet.svelte';
   import Pot from './Pot.svelte';
   import { ApiError, api, del, post } from '../lib/api';
@@ -13,17 +14,22 @@
   let draft = $state<Record<string, string>>({});
   let dup = $state<{ id: number; slug: string; title: string } | null>(null);
   let phase = $state(0);
+  let failTitle = $state('No recipe found');
   let fileInput: HTMLInputElement;
   const phases = ['Opening the page', 'Finding the ingredients', 'Reading the steps', 'Fetching the photo'];
   let phaseTimer = 0;
 
+  // Reset each time the sheet opens (and only then: typing must not re-run this).
   $effect(() => {
     if (app.adding) {
-      mode = 'menu';
-      error = '';
-      text = '';
-      url = app.addUrl;
-      if (/^https?:\/\/\S+$/i.test(url.trim())) importLink();
+      untrack(() => {
+        mode = 'menu';
+        error = '';
+        text = '';
+        failTitle = 'No recipe found';
+        url = app.addUrl;
+        if (/^https?:\/\/\S+$/i.test(url.trim())) importLink();
+      });
     }
   });
 
@@ -52,6 +58,7 @@
     if (e instanceof ApiError && e.data?.draft) draft = e.data.draft;
     else draft = url ? { sourceUrl: url } : {};
     error = e instanceof Error ? e.message : 'That didn’t work';
+    failTitle = e instanceof ApiError && e.status === 422 ? 'No recipe found' : 'That didn’t work';
     mode = 'failed';
   }
 
@@ -59,7 +66,8 @@
     if (!url.trim()) return;
     working();
     try {
-      const res = await post('/import/url', { url: url.trim(), force });
+      const res = await post('/import/url', { url: url.trim(), force, clip: app.addClip });
+      app.addClip = '';
       if (res.duplicate) {
         clearInterval(phaseTimer);
         dup = res.recipe;
@@ -153,7 +161,7 @@
     </div>
   {:else}
     <div class="center">
-      <p class="serif status">No recipe found</p>
+      <p class="serif status">{failTitle}</p>
       <p class="muted">{error}</p>
       <div class="row wrap" style:justify-content="center">
         <button class="btn primary" onclick={() => startBlank(draft)}>Fill it in myself</button>

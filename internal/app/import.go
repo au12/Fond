@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,6 +58,7 @@ func (s *Server) importURL(w http.ResponseWriter, r *http.Request, u *User) erro
 	var in struct {
 		URL   string `json:"url"`
 		HTML  string `json:"html"`
+		Clip  string `json:"clip"`
 		Force bool   `json:"force"`
 	}
 	if err := readJSON(w, r, &in); err != nil {
@@ -87,6 +89,11 @@ func (s *Server) importURL(w http.ResponseWriter, r *http.Request, u *User) erro
 		}
 	}
 	page := []byte(in.HTML)
+	if in.Clip != "" {
+		if c, ok := s.clips.LoadAndDelete(in.Clip); ok {
+			page = c.(*clip).html
+		}
+	}
 	if len(page) == 0 {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -95,6 +102,9 @@ func (s *Server) importURL(w http.ResponseWriter, r *http.Request, u *User) erro
 		if err != nil {
 			if errors.Is(err, scrape.ErrBlockedAddress) {
 				return fail(400, "That link points to a private network address, which Fond doesn't fetch")
+			}
+			if strings.Contains(err.Error(), "HTTP 403") || strings.Contains(err.Error(), "HTTP 429") || strings.Contains(err.Error(), "HTTP 401") {
+				return fail(502, "That site turns away automated requests. Open the page in your browser and use the “Save to Fond” bookmark or shortcut, which sends the page you already loaded. Or paste the recipe text.")
 			}
 			return fail(502, "Couldn't open that page: "+trimErr(err))
 		}
@@ -203,6 +213,47 @@ func (s *Server) importPhoto(w http.ResponseWriter, r *http.Request, u *User) er
 		return fail(422, "The AI model couldn't read a recipe from that photo: "+trimErr(err))
 	}
 	return s.finishImport(w, r, u, rec, "", "ai")
+}
+
+// A clip is a page the user's own browser already loaded, handed over by the
+// bookmarklet. It waits here briefly until the signed-in app collects it.
+type clip struct {
+	html    []byte
+	expires time.Time
+}
+
+// receiveClip accepts the bookmarklet's cross-site form post. It is
+// deliberately unauthenticated (the session cookie is not sent on a cross-site
+// POST), so it only parks the page in memory, tightly bounded, and redirects
+// to the app, where the signed-in user decides what happens to it.
+func (s *Server) receiveClip(w http.ResponseWriter, r *http.Request) {
+	if !s.limit.hit("clip:"+s.clientIP(r), 12, time.Minute) {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "That page is too large to send", http.StatusRequestEntityTooLarge)
+		return
+	}
+	target := "/share?url=" + url.QueryEscape(r.PostFormValue("url"))
+	if page := r.PostFormValue("html"); page != "" {
+		n := 0
+		s.clips.Range(func(k, v any) bool {
+			if time.Now().After(v.(*clip).expires) {
+				s.clips.Delete(k)
+			} else {
+				n++
+			}
+			return true
+		})
+		if n < 24 {
+			id := randToken(12)
+			s.clips.Store(id, &clip{html: []byte(page), expires: time.Now().Add(3 * time.Minute)})
+			target += "&clip=" + id
+		}
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
 // ------------------------------------------------------------------ optional AI
