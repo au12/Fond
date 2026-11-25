@@ -7,7 +7,7 @@ Fond learns to weigh, and to remember.
 ### Weighing
 
 - **Weigh** on any recipe shows cups and spoons as grams, from a built-in table of about 250 foods (3,500 names). Counted things keep their count and gain a weight beside it. A weight the recipe gives itself always wins.
-- The table is built from USDA FoodData Central (SR Legacy, FNDDS) and the AUSNUT 2023 food measures, cross-checked against each other and against King Arthur Baking's and America's Test Kitchen's charts. Where sources disagree by more than a tenth the weight is shown with ≈. Wheat flour follows King Arthur's 120 g cup; dip-and-sweep (142 g) is a setting.
+- The table is built from USDA FoodData Central (SR Legacy, FNDDS) and the AUSNUT 2023 food measures, cross-checked against each other and against King Arthur Baking's and America's Test Kitchen's charts. Where sources disagree by more than a tenth the weight is shown with ≈. Wheat flour follows King Arthur's 120 g cup; dip-and-sweep (142 g) is a setting, and recipes from King Arthur Baking or America's Test Kitchen are weighed by that kitchen's own method.
 - A new matcher ties a line to a food by the head noun of its name instead of by any word in it, so "boiling water" is no longer weighed as oil, "butternut squash" as butter or "sugar snap peas" as sugar. Notes after the comma are ignored, states are honoured (sifted, packed, chopped, sliced), and "dried", "cooked", "powdered" or the name of a second food stop a match rather than risk a wrong one. It weighs 97.5 % of cup measures and 98.3 % of spoon measures in an 11,000-line corpus of real recipes.
 - The parser now reads `1 cup plus 2 tablespoons`, `1 packed cup`, `juice of 1 lemon`, `1 stick (113 g) butter`, egg sizes, cloves, packets and stated can sizes.
 - Lines Fond cannot weigh stay as written and are marked **?**. Tapping one offers the closest foods, "weigh it yourself", or "don't weigh this", for the whole household or one recipe. Settings → Weighing lists what the library still cannot weigh, and the household's corrections.
@@ -16,7 +16,7 @@ Fond learns to weigh, and to remember.
 - Baker's percentages use the table's flour and water figures, show salt, take the starter's hydration, and say when a line had to be left out.
 - A one-time note that amounts under a gram or two need a 0.01 g scale.
 - With AI assist on, the model can suggest which known food an unfamiliar ingredient weighs like. It never applies anything itself.
-- The edit page shows each line's weight as you type. Print, shared links and cookbooks weigh the same way, and shared links carry the household's corrections.
+- The edit page shows each line's weight as you type and lets you teach Fond an ingredient on the spot. Print, shared links and cookbooks weigh the same way, and shared links carry the household's corrections.
 
 ### History
 

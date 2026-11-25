@@ -118,12 +118,12 @@ Turn on **Weigh** on a recipe (or make it the default in **Settings → Weighing
 - `1 cup all-purpose flour` reads `120 g`; `1/4 teaspoon instant yeast` reads `0.77 g`. Counted things keep their count and gain a weight beside it: `3 large eggs · 150 g`.
 - A weight the recipe already gives, `2 cups (250 g) flour`, always wins over arithmetic.
 - An estimate is marked **≈**: the sources disagree by more than a tenth, or the amount depends on how something is cut or packed (fresh herbs, "1 onion").
-- A line Fond cannot place stays exactly as written and gets a **?**. Tap it to pick the closest food, to weigh it once yourself, or to say it should be left alone, for every recipe in the household or only this one. **Settings → Weighing** lists everything in your library that still has no weight, most used first.
+- A line Fond cannot place stays exactly as written and gets a **?**. Tap it to pick the closest food, to weigh it once yourself, or to say it should be left alone, for every recipe in the household or only this one. The edit page shows each line's weight as you type and flags the same lines, and **Settings → Weighing** lists everything in your library that still has no weight, most used first.
 - **Weights** shows every line with its figure and where it comes from, and can write the weights into the recipe (`1 cup (120 g) flour`) so they travel into print, sharing and export. That becomes a new version, so it can be undone.
 
 Three things are matters of judgement, and Fond says so rather than hiding them:
 
-- **A cup of flour** is 120 g, spooned and levelled, as King Arthur measures it. If you dip the cup into the bag, switch **Settings → Weighing** to 142 g.
+- **A cup of flour** is 120 g, spooned and levelled, as King Arthur measures it. If you dip the cup into the bag, switch **Settings → Weighing** to 142 g. Recipes saved from King Arthur Baking and from America's Test Kitchen (with Cook's Illustrated and Cook's Country) are weighed the way those kitchens say they fill a cup, whichever you chose.
 - **Kosher salt** is two different salts: a teaspoon of Diamond Crystal weighs 2.8 g and a teaspoon of Morton 4.8 g. When a recipe does not say which, Fond works it out from the amount: a loaf with 500 g of flour and a tablespoon of kosher salt is 1.7 % salt with Diamond Crystal and 2.9 % with Morton, and bread is made at about 2 %. It shows that reasoning, marks the weight ≈, and lets you overrule it. When the amount fits both, it says it cannot tell.
 - **Fractions of a gram** need a scale that reads to 0.01 g. Fond mentions that once.
 

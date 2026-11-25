@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ResolveSheet from '../components/ResolveSheet.svelte';
   import TagInput from '../components/TagInput.svelte';
   import { api, del, get, img, post, put } from '../lib/api';
   import { parseIngredient, show } from '../lib/ingredients';
@@ -34,6 +35,8 @@
   let fileInput: HTMLInputElement;
   let dirty = $state(false);
   let versionNote = $state('');
+  let resolving = $state(false);
+  let resolveLine = $state('');
 
   const toText = (lines: Line[], sep: string) => lines.map((l) => (l.h ? '# ' + l.text : l.text)).join(sep);
 
@@ -87,7 +90,7 @@
   const parsedPreview = $derived.by(() => {
     dict.rev;
     const lines = ingredientLines();
-    const o = { scale: 1, system: 'metric' as const, weigh: true, fractions: true, ...weighOptions({ title, tags, ingredients: lines, extra: original?.extra }, prefs()) };
+    const o = { scale: 1, system: 'metric' as const, weigh: true, fractions: true, ...weighOptions({ title, tags, ingredients: lines, extra: original?.extra, sourceUrl }, prefs()) };
     return lines.map((l) => {
       const p = l.h ? null : parseIngredient(l.text);
       const w = p && dict.ready ? show(p, o) : null;
@@ -209,12 +212,12 @@
         <ul class="parsed" aria-live="polite">
           {#each parsedPreview as { l, p, grams, unknown }}
             {#if l.h}<li class="h">{l.text}</li>
-            {:else if p}<li>{#if p.head}<b class="num">{p.prefix}{p.head}</b>{' '}{/if}{p.rest}{#if p.alt}<i> also {p.alt.qty} {p.alt.unit.one}</i>{/if}{#if grams}<span class="wt num">{grams}</span>{:else if unknown}<span class="wt none" title="Fond doesn’t know what this weighs. You can tell it from the recipe page.">no weight</span>{/if}</li>{/if}
+            {:else if p}<li>{#if p.head}<b class="num">{p.prefix}{p.head}</b>{' '}{/if}{p.rest}{#if p.alt}<i> also {p.alt.qty} {p.alt.unit.one}</i>{/if}{#if grams}<span class="wt num">{grams}</span>{:else if unknown}<button type="button" class="wt none" onclick={() => { resolveLine = l.text; resolving = true; }} title="Fond doesn’t know what this weighs. Tell it how.">no weight</button>{/if}</li>{/if}
           {:else}
             <li class="faint">Quantities and units are picked out automatically, so scaling and unit conversion just work.</li>
           {/each}
         </ul>
-        {#if unknown}<span class="hint">{unknown === 1 ? 'One line has' : `${unknown} lines have`} no weight yet. Open the recipe, turn on <b>Weigh</b> and tap the <b>?</b> to teach Fond, or write the weight in yourself, like “1 cup (140 g)”.</span>{/if}
+        {#if unknown}<span class="hint">{unknown === 1 ? 'One line has' : `${unknown} lines have`} no weight yet. Tap <b>no weight</b> to teach Fond what it is, or write the weight in yourself, like “1 cup (140 g)”.</span>{/if}
       </div>
     </div>
 
@@ -237,6 +240,8 @@
   {/if}
 </form>
 
+<ResolveSheet bind:open={resolving} line={resolveLine} options={{ flour: prefs().flour }} />
+
 <style>
   .edit { width: min(1000px, 100%); display: grid; gap: 22px; }
   .top { position: sticky; top: 64px; z-index: 10; padding: 8px 0; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
@@ -256,7 +261,8 @@
   .parsed li { padding: 3px 0; }
   .vnote i { font-weight: 400; font-style: normal; color: var(--ink-3); }
   .wt { float: right; margin-left: 10px; font-size: 0.82rem; color: var(--ink-3); }
-  .wt.none { padding: 0 8px; border-radius: 999px; background: var(--butter-soft); color: var(--ink-2); font-weight: 600; cursor: help; }
+  .wt.none { padding: 0 8px; border-radius: 999px; background: var(--butter-soft); color: var(--ink-2); font-weight: 600; transition: background 0.15s; }
+  .wt.none:hover { background: var(--butter); color: #2a2508; }
   .parsed li.h { font: italic 600 1rem var(--serif); color: var(--ink-2); padding-top: 8px; }
   .parsed b { color: var(--bay); }
   .parsed i { color: var(--ink-3); font-size: 0.85em; }

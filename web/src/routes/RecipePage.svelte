@@ -68,7 +68,7 @@
   const byWeight = $derived(parsed.map((p) => (p ? show(p, { ...opts, system: 'metric', weigh: true }) : null)));
   const measurable = $derived(byWeight.filter((x) => x?.measurable).length);
   const weighed = $derived(byWeight.filter((x) => x?.weighed).length);
-  const salt = $derived((dict.rev, r && dict.ready ? saltFor(r, { flour: pf.flour, fixes: r.extra?.fixes }) : null));
+  const salt = $derived((dict.rev, r && dict.ready ? saltFor(r, { flour: wopts.flour, fixes: r.extra?.fixes }) : null));
   const writable = $derived(items.filter((p) => withWeight(p, wopts) != null).length);
   // Fractions of a gram want a finer scale than most kitchens have; say so once.
   const tinyWeights = $derived(weighing && !pf.seen?.smallWeights && byWeight.some((x) => x?.estimated && x.grams != null && x.grams < 2));

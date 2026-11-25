@@ -60,10 +60,34 @@ export async function removeRule(rule: Rule) {
   useRules(allRules().filter((r) => r.phrase !== rule.phrase));
 }
 
+/**
+ * Test kitchens that publish how they fill a cup of flour. A recipe from one of
+ * them is weighed their way, whatever the reader's own habit: King Arthur
+ * spoons and levels (120 g), America's Test Kitchen dips and sweeps (142 g).
+ */
+const HOUSES: [RegExp, 'spoon' | 'dip', string][] = [
+  [/(^|\.)kingarthurbaking\.com$|(^|\.)kingarthurflour\.com$/, 'spoon', 'King Arthur Baking'],
+  [/(^|\.)americastestkitchen\.com$|(^|\.)cooksillustrated\.com$|(^|\.)cookscountry\.com$/, 'dip', 'America’s Test Kitchen'],
+];
+
+export function houseFor(sourceUrl: string | undefined): { flour: 'spoon' | 'dip'; house: string } | null {
+  if (!sourceUrl) return null;
+  let host = '';
+  try {
+    host = new URL(sourceUrl).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  const hit = HOUSES.find(([re]) => re.test(host));
+  return hit ? { flour: hit[1], house: hit[2] } : null;
+}
+
+type Weighable = Pick<Recipe, 'title' | 'tags' | 'ingredients' | 'extra'> & { sourceUrl?: string };
+
 /** Everything that decides how one recipe is weighed for one reader. */
-export function weighOptions(r: Pick<Recipe, 'title' | 'tags' | 'ingredients' | 'extra'> | null, pf: Pick<Prefs, 'flour'>): WeighOptions {
+export function weighOptions(r: Weighable | null, pf: Pick<Prefs, 'flour'>): WeighOptions {
   if (!r) return { flour: pf.flour };
-  const base: WeighOptions = { flour: pf.flour, fixes: r.extra?.fixes };
+  const base: WeighOptions = { flour: pf.flour, fixes: r.extra?.fixes, ...(houseFor(r.sourceUrl) ?? {}) };
   const said = r.extra?.salt;
   if (said) return { ...base, salt: { brand: said, sure: true } };
   const guess = dict.ready ? saltFor(r, base) : null;

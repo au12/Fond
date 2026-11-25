@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import foods from '../data/foods.json';
 import { loadFoods } from './foods';
+import { parseIngredient, show } from './ingredients';
 import { SALT_RANGES, saltFor } from './salt';
+import { houseFor, weighOptions } from './weigh.svelte';
 
 loadFoods(foods as any);
 
@@ -77,5 +79,30 @@ describe('which kosher salt a recipe means', () => {
     const a = guess('Mystery', ['3 handfuls mystery grain', '1 tsp kosher salt'])!;
     expect(a.brand).toBe(null);
     expect(a.percent).toBe(null);
+  });
+});
+
+describe('a test kitchen’s own cup of flour', () => {
+  const lines = ['2 cups all-purpose flour', '1 cup water'];
+  const from = (sourceUrl: string, flour: 'spoon' | 'dip' = 'spoon') =>
+    weighOptions({ title: 'Bread', tags: [], ingredients: lines.map((text) => ({ text })), extra: null, sourceUrl }, { flour });
+  const flour = (o: ReturnType<typeof from>) => show(parseIngredient(lines[0]), { ...o, scale: 1, system: 'metric', weigh: true, fractions: true });
+
+  it('recognises the kitchens that publish their method', () => {
+    expect(houseFor('https://www.kingarthurbaking.com/recipes/x')).toEqual({ flour: 'spoon', house: 'King Arthur Baking' });
+    expect(houseFor('https://www.americastestkitchen.com/recipes/1')?.flour).toBe('dip');
+    expect(houseFor('https://www.cooksillustrated.com/recipes/1')?.flour).toBe('dip');
+    expect(houseFor('https://notkingarthurbaking.com/')).toBe(null);
+    expect(houseFor('https://example.com/')).toBe(null);
+    expect(houseFor('not a link')).toBe(null);
+    expect(houseFor(undefined)).toBe(null);
+  });
+  it('weighs their recipes their way, whatever the reader prefers', () => {
+    expect(flour(from('https://example.com/bread')).measure).toBe('240 g');
+    expect(flour(from('https://example.com/bread', 'dip')).measure).toBe('284 g');
+    expect(flour(from('https://www.americastestkitchen.com/recipes/1')).measure).toBe('284 g');
+    expect(flour(from('https://www.kingarthurbaking.com/recipes/x', 'dip')).measure).toBe('240 g');
+    expect(flour(from('https://www.americastestkitchen.com/recipes/1')).basis).toContain('as America’s Test Kitchen measures');
+    expect(flour(from('https://www.kingarthurbaking.com/recipes/x', 'dip')).basis).toContain('as King Arthur Baking measures');
   });
 });

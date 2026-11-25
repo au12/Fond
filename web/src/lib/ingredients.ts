@@ -23,6 +23,8 @@ export interface WeighOptions {
   /** Which kosher salt the recipe means, once known or inferred. */
   salt?: { brand: 'dc' | 'morton'; sure: boolean } | null;
   fixes?: Record<string, Fix>;
+  /** Whose convention set the flour method, when the recipe's source did: "King Arthur Baking". */
+  house?: string;
 }
 
 export interface DisplayOptions extends WeighOptions {
@@ -515,7 +517,8 @@ function basisFor(p: Parsed, w: Weight, o: WeighOptions): string {
     if (!brand?.d) return 'kosher salt, brand unknown: halfway between Diamond Crystal (2.8 g a teaspoon) and Morton (4.8 g)';
     return `kosher salt, ${o.salt!.sure ? 'set to' : 'read as'} ${o.salt!.brand === 'dc' ? 'Diamond Crystal' : 'Morton'} · ${+(brand.d * UNIT_BY_KEY.get('tsp')!.base).toFixed(1)} g per tsp`;
   }
-  if (o.flour === 'dip' && food.x?.dip) return `${food.n}, dipped and swept · ${Math.round(food.x.dip * per.base)} g per ${per.one}`;
+  if (o.flour === 'dip' && food.x?.dip) return `${food.n}, dipped and swept${o.house ? `, as ${o.house} measures` : ''} · ${Math.round(food.x.dip * per.base)} g per ${per.one}`;
+  if (o.house && food.f && food.x?.dip) return `${food.n}, spooned and levelled, as ${o.house} measures · ${Math.round(food.d! * per.base)} g per ${per.one}`;
   const state = w.match?.state && w.match.state !== food.ds ? `, ${w.match.state}` : '';
   const said = state || food.id === 'salt-kosher' ? '' : basisText(food, per.base);
   return `${food.n}${state}${said ? ` · ${said} g per ${per.one}` : ''}`;
