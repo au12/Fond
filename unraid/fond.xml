@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/au12/fond/issues</Support>
   <Project>https://github.com/au12/fond</Project>
-  <Overview>Fond is a fast, uncluttered recipe keeper. Save recipes from any website (including straight from your phone's share sheet), cook with tick-off ingredients, step timers and a screen that stays awake, convert units and scale with baker's percentages, and gather recipes into beautifully typeset cookbooks you can print or share with a link. One small container, a single SQLite file, no external database. Imports directly from Mealie.</Overview>
+  <Overview>Fond is a fast, uncluttered recipe keeper. Save recipes from any website (including straight from your phone's share sheet), cook with tick-off ingredients, step timers and a screen that stays awake, weigh ingredients instead of scooping them, convert units and scale with baker's percentages, keep a history of every change, and gather recipes into beautifully typeset cookbooks you can print or share with a link. One small container, a single SQLite file, no external database. Imports directly from Mealie.</Overview>
   <Category>Productivity: Tools: Status:Stable</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/au12/fond/main/unraid/fond.xml</TemplateURL>

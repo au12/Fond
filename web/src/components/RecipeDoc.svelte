@@ -47,7 +47,7 @@
             <li class="doc-group">{line.text}</li>
           {:else}
             {@const s = show(parseIngredient(line.text), o)}
-            <li>{#if s.measure}<span class="q">{s.estimated && s.approx ? '≈ ' : ''}{s.measure}</span>{' '}{/if}{s.rest}{#if s.also}<span class="also"> ({s.approx ? '≈ ' : ''}{s.also})</span>{/if}</li>
+            <li>{#if s.measure}<span class="q">{s.estimated && s.approx ? '≈ ' : ''}{s.measure}</span>{' '}{/if}{s.rest}{#if s.also}{' '}<span class="also">({s.approx ? '≈ ' : ''}{s.also})</span>{/if}</li>
           {/if}
         {/each}
       </ul>

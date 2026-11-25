@@ -191,14 +191,14 @@
   h2 { font: 600 1.6rem/1.15 var(--serif); letter-spacing: -0.01em; }
   h3 { margin: 22px 0 8px; font: 600 1.15rem/1.2 var(--serif); }
   .still { margin-left: 10px; font: 500 0.82rem var(--sans); color: var(--ink-3); }
-  /* Old-style figures make a 1 look like an I; versions are numbers. */
-  h2, .what b, .n { font-variant-numeric: lining-nums; }
   .top s { color: var(--ink-3); }
   .lines { display: grid; gap: 2px; }
   .lines li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: baseline; padding: 6px 10px 6px 0; border-radius: 8px; line-height: 1.5; }
   .lines.method li:not(.group) { grid-template-columns: 22px 26px minmax(0, 1fr); padding-top: 8px; padding-bottom: 8px; }
   .mark { text-align: center; font-weight: 700; color: var(--ink-3); user-select: none; }
   .n { font: 600 0.95rem var(--serif); color: var(--ink-3); }
+  /* Old-style figures make a 1 look like an I; versions and steps are numbers. */
+  h2, .what b, .n { font-variant-numeric: lining-nums tabular-nums; }
   .same .t { color: var(--ink-2); }
   .group .t { font: italic 600 1rem/1.4 var(--serif); color: var(--ink-2); }
   .add { background: var(--wash); }

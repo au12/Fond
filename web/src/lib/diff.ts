@@ -57,8 +57,36 @@ export function diffWords(before: string, after: string): Seg[] {
     i = pi + 1;
     j = pj + 1;
   }
-  // "2 cups" → "3 cups" reads better as one swap than as a removal and an addition around a space.
-  return out.filter((s) => s.v !== '');
+  return gather(out.filter((s) => s.v !== ''));
+}
+
+/**
+ * "45 minutes" → "1 hour" comes out of the diff as two swaps around a space.
+ * It reads better as one: gather changes that only whitespace separates.
+ */
+function gather(segs: Seg[]): Seg[] {
+  const out: Seg[] = [];
+  let del = '';
+  let add = '';
+  const flush = () => {
+    if (del) out.push({ t: 'del', v: del });
+    if (add) out.push({ t: 'add', v: add });
+    del = add = '';
+  };
+  segs.forEach((seg, i) => {
+    if (seg.t === 'del') del += seg.v;
+    else if (seg.t === 'add') add += seg.v;
+    else if ((del || add) && /^\s+$/.test(seg.v) && segs[i + 1] && segs[i + 1].t !== 'same') {
+      // A space inside a run of changes belongs to both the old words and the new.
+      del += seg.v;
+      add += seg.v;
+    } else {
+      flush();
+      out.push(seg);
+    }
+  });
+  flush();
+  return out;
 }
 
 /** How alike two lines are, 0 to 1, by the words they share (amounts aside). */

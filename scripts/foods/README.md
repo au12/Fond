@@ -22,6 +22,11 @@ Only the Python standard library is needed. If a change to the dictionary is
 intended, refresh the golden set with `FOND_GOLDEN_UPDATE=1 npm test -- golden`
 and read the diff.
 
+To measure coverage on your own recipes, put their ingredient lines in a JSON
+array and run `FOND_LINES=lines.json npx vitest run corpus --silent=false` in
+`web/`. It reports how many cup, spoon and counted lines get a weight and
+which names are missed most often.
+
 ## Where the numbers come from
 
 - **USDA FoodData Central, SR Legacy** (2018) is the backbone: laboratory

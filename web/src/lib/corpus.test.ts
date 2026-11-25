@@ -1,7 +1,8 @@
 // Coverage over a corpus of real ingredient lines. Not run by default: point
-// FOND_CORPUS at a JSON file holding an array of lines (or of [site, language,
-// line] rows) and run `npm test -- corpus` to see how many measured lines Fond
-// can weigh and which names it misses most.
+// FOND_LINES at a JSON file holding an array of lines (or of [site, language,
+// line] rows) and run
+//   FOND_LINES=lines.json npx vitest run corpus --silent=false
+// to see how many measured lines Fond can weigh and which names it misses most.
 
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
@@ -11,7 +12,7 @@ import { lookup, parseIngredient, weigh } from './ingredients';
 
 loadFoods(foods as any);
 
-const path = process.env.FOND_CORPUS;
+const path = process.env.FOND_LINES;
 
 it.skipIf(!path)('weighs most of what real recipes measure by volume', () => {
   const data: (string | [string, string, string])[] = JSON.parse(readFileSync(path!, 'utf8'));

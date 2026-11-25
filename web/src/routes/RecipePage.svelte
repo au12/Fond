@@ -626,7 +626,7 @@
   .saltcard { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r-m); background: var(--butter-soft); }
   .saltcard span { font-size: 0.875rem; line-height: 1.5; color: var(--ink-2); }
   .saltcard .seg { justify-self: start; background: color-mix(in srgb, var(--ink) 8%, transparent); max-width: 100%; overflow-x: auto; }
-  .wlist { display: grid; max-height: 44dvh; overflow: auto; }
+  .wlist { display: grid; max-height: 32dvh; overflow: auto; }
   .wrow { display: flex; align-items: center; gap: 12px; padding: 10px 2px; text-align: left; border-bottom: 1px solid var(--line); line-height: 1.35; transition: background 0.15s; }
   .wrow:hover { background: var(--sunk); }
   .wrow .grow { display: grid; gap: 1px; }

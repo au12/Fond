@@ -48,6 +48,9 @@ describe('word diff', () => {
       { t: 'same', v: 'Bake for ' }, { t: 'del', v: '30' }, { t: 'add', v: '35' }, { t: 'same', v: ' minutes.' },
     ]);
   });
+  it('gathers neighbouring changes into one', () => {
+    expect(diffWords('Rest for 45 minutes.', 'Rest for 1 hour.')).toEqual([{ t: 'same', v: 'Rest for ' }, { t: 'del', v: '45 minutes.' }, { t: 'add', v: '1 hour.' }]);
+  });
   it('rebuilds both sides exactly', () => {
     const a = 'Mix the flour and salt, then rest.';
     const b = 'Whisk the flour, sugar and salt.';

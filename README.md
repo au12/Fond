@@ -11,13 +11,15 @@
 ## Why Fond
 
 - **Save a recipe from anywhere in one step.** Paste a link, share it from your phone, or press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>V</kbd> on the library page. Fond reads the page, keeps the photo, and links back to the original.
-- **Ingredients are just text.** Type or paste `2 1/2 cups flour, sifted` and Fond understands it. Scaling, unit conversion and baker's percentages work without building a database of foods and units.
+- **Ingredients are just text.** Type or paste `2 1/2 cups flour, sifted` and Fond understands it. Scaling, unit conversion, weights and baker's percentages work without building a database of foods and units.
+- **Weigh instead of scooping.** One tap turns cups and spoons into grams, from a built-in table of about 250 foods drawn from USDA and Australian laboratory data and cross-checked against King Arthur's and America's Test Kitchen's charts. Estimates are marked ≈, anything Fond cannot place is left as written and marked **?**, and one more tap teaches it for every recipe. See [Weighing](#weighing).
 - **Made for cooking, not filing.** Tick off ingredients as you measure them and steps as you finish them. Times in a step become one-tap timers that complete the step when they ring. The screen stays awake while a recipe is open, and your place survives a reload.
-- **Your units.** Show every recipe as written, in metric, or in US measures, and optionally by weight. When an author gives both (`1 cup (120 g)`), Fond uses the author's number instead of doing arithmetic.
-- **Baker's percentages.** For any recipe with flour: percentages against total flour, hydration, and "make it with 800 g of flour" scaling. A sourdough starter is counted as half flour, half water.
+- **Your units.** Show every recipe as written, in metric, or in US measures. When an author gives both (`1 cup (120 g)`), Fond uses the author's number instead of doing arithmetic.
+- **Baker's percentages.** For any recipe with flour: percentages against total flour, hydration, salt, and "make it with 800 g of flour" scaling. A starter is split into flour and water at the hydration you keep it at.
+- **Every version kept.** Change the ingredients or the method and the recipe as it was is kept. The history shows what changed, line by line, and brings any version back.
 - **Cookbooks.** Collect recipes into books with chapters. A recipe can live in as many books as you like.
 - **Beautifully typeset.** Shared links, printouts and cookbooks are set in real book typography, in a classic, modern or compact style, on Letter, A4, half-letter or 4 × 6 cards, with an optional QR code back to the recipe.
-- **Light.** A ~21 MB image, about 30 MB of RAM, and an 82 KB (gzipped) web app. No external database, cache or queue.
+- **Light.** A ~21 MB image, about 30 MB of RAM, and a 103 KB (gzipped) web app, plus 22 KB for the ingredient table. No external database, cache or queue.
 - **Safe to put on the internet.** See [Security](#security).
 
 | Cooking | Typeset for print |
@@ -26,11 +28,19 @@
 | **Cookbooks** | **A shared cookbook** |
 | ![Cookbook shelf](docs/screenshots/desktop-cookbooks.jpg) | ![A cookbook shared by link](docs/screenshots/desktop-shared-cookbook.jpg) |
 
+| **Weighing** | **Where each weight comes from** |
+| --- | --- |
+| ![A recipe written in cups, shown in grams with baker's percentages](docs/screenshots/desktop-weigh.jpg) | ![The Weights sheet, with the kosher salt judgement](docs/screenshots/desktop-weights.jpg) |
+
+![A recipe's history, showing what changed in one version](docs/screenshots/desktop-history.jpg)
+
 <p align="center">
-  <img src="docs/screenshots/mobile-library.jpg" width="24%" alt="Library on a phone">
-  <img src="docs/screenshots/mobile-recipe.jpg" width="24%" alt="Recipe on a phone">
-  <img src="docs/screenshots/mobile-cooking.jpg" width="24%" alt="Cooking with a timer running on a phone">
-  <img src="docs/screenshots/mobile-add.jpg" width="24%" alt="Adding a recipe on a phone">
+  <img src="docs/screenshots/mobile-library.jpg" width="16%" alt="Library on a phone">
+  <img src="docs/screenshots/mobile-recipe.jpg" width="16%" alt="Recipe on a phone">
+  <img src="docs/screenshots/mobile-weigh.jpg" width="16%" alt="A recipe shown by weight on a phone">
+  <img src="docs/screenshots/mobile-cooking.jpg" width="16%" alt="Cooking with a timer running on a phone">
+  <img src="docs/screenshots/mobile-history.jpg" width="16%" alt="Recipe history on a phone">
+  <img src="docs/screenshots/mobile-add.jpg" width="16%" alt="Adding a recipe on a phone">
 </p>
 
 ## Fond, Mealie and Tandoor
@@ -101,6 +111,34 @@ Point the proxy at port `8080` and set `FOND_BASE_URL` to the public address so 
 
 **Desktop.** Drag the “Save to Fond” bookmark from the same settings page to your bookmarks bar, or just paste a link on the library page. The bookmark hands Fond the page your browser has already loaded, so it also works behind logins and on sites that refuse requests from servers.
 
+## Weighing
+
+Turn on **Weigh** on a recipe (or make it the default in **Settings → Weighing**) and volumes become weights:
+
+- `1 cup all-purpose flour` reads `120 g`; `1/4 teaspoon instant yeast` reads `0.77 g`. Counted things keep their count and gain a weight beside it: `3 large eggs · 150 g`.
+- A weight the recipe already gives, `2 cups (250 g) flour`, always wins over arithmetic.
+- An estimate is marked **≈**: the sources disagree by more than a tenth, or the amount depends on how something is cut or packed (fresh herbs, "1 onion").
+- A line Fond cannot place stays exactly as written and gets a **?**. Tap it to pick the closest food, to weigh it once yourself, or to say it should be left alone, for every recipe in the household or only this one. **Settings → Weighing** lists everything in your library that still has no weight, most used first.
+- **Weights** shows every line with its figure and where it comes from, and can write the weights into the recipe (`1 cup (120 g) flour`) so they travel into print, sharing and export. That becomes a new version, so it can be undone.
+
+Three things are matters of judgement, and Fond says so rather than hiding them:
+
+- **A cup of flour** is 120 g, spooned and levelled, as King Arthur measures it. If you dip the cup into the bag, switch **Settings → Weighing** to 142 g.
+- **Kosher salt** is two different salts: a teaspoon of Diamond Crystal weighs 2.8 g and a teaspoon of Morton 4.8 g. When a recipe does not say which, Fond works it out from the amount: a loaf with 500 g of flour and a tablespoon of kosher salt is 1.7 % salt with Diamond Crystal and 2.9 % with Morton, and bread is made at about 2 %. It shows that reasoning, marks the weight ≈, and lets you overrule it. When the amount fits both, it says it cannot tell.
+- **Fractions of a gram** need a scale that reads to 0.01 g. Fond mentions that once.
+
+### Where the numbers come from
+
+The table (`web/src/data/foods.json`, about 250 foods and 3,500 names) is built by [`scripts/foods`](scripts/foods) from USDA FoodData Central (SR Legacy and FNDDS) and the AUSNUT 2023 food measures, each food cross-checked across those sources and against the weight charts published by King Arthur Baking and America's Test Kitchen. [`scripts/foods/report.md`](scripts/foods/report.md) lists every food with what each source says.
+
+Matching is deliberately cautious. A line is tied to a food by the head noun of its name, so "boiling water" is water, "butternut squash" is squash and "water, for the sugar syrup" is still water; "dried", "cooked", "powdered" and the name of a second food stop a match rather than risk a wrong one. On 11,000 ingredient lines from recipe sites it weighs 97.5 % of cup measures and 98.3 % of spoon measures, and a golden set of 529 lines in the test suite pins the answers.
+
+USDA data is in the public domain. AUSNUT 2023 is © Food Standards Australia New Zealand, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+## Recipe history
+
+Every recipe has a version number, shown at the foot of the page. A save that changes the ingredients or the method starts a new version and keeps the old one; edits to the title, notes, tags or photo do not. **History** lists each version with who saved it, when, and the note they left, shows what changed down to the word, and restores any version as a new one, so nothing is ever overwritten. The first version and the latest hundred are kept.
+
 ## How importing works
 
 Fond tries, in order: schema.org JSON-LD, schema.org microdata and RDFa, the markup of common recipe plugins, and finally "Ingredients" / "Instructions" headings (in several languages). Truncated structured data is detected and replaced by a richer list found further down the page.
@@ -117,7 +155,7 @@ Reproduce it with `FOND_CORPUS=/path/to/recipe-scrapers/tests/test_data go test 
 
 Some large sites turn away requests that come from servers. Fond does not pose as a search crawler to get around that. It tells you, and the bookmark (or an optional extra step in the iOS Shortcut) sends the page your own browser loaded instead.
 
-**Optional AI assist.** Connect any OpenAI-compatible API (Ollama works) in **Settings → AI assist** and Fond will use it for the pages that have no recipe markup at all, for messy pasted text, and to read recipes from photos with a vision model. Nothing is sent anywhere unless you configure this.
+**Optional AI assist.** Connect any OpenAI-compatible API (Ollama works) in **Settings → AI assist** and Fond will use it for the pages that have no recipe markup at all, for messy pasted text, and to read recipes from photos with a vision model. With it on, Fond can also ask the model which known food an unfamiliar ingredient weighs like; it only ever suggests, and you confirm. Nothing is sent anywhere unless you configure this.
 
 ## Moving from Mealie
 
@@ -168,7 +206,7 @@ Found a problem? Please open an issue, or a private security advisory for anythi
 
 ## Backups
 
-Everything lives in the data folder: `fond.db` and `images/`. Back up that folder. **Settings → Import → Download everything** also gives you a portable zip of every recipe as JSON plus the photos.
+Everything lives in the data folder: `fond.db` and `images/`. Back up that folder. **Settings → Import → Download everything** also gives you a portable zip of every recipe as JSON, with its history and your weighing corrections, plus the photos.
 
 ## Development
 
@@ -179,7 +217,7 @@ FOND_DATA=./data go run ./cmd/fond                 # http://localhost:8080
 
 Releases are cut by changing the number in `VERSION`; the workflow then publishes the versioned image and creates the GitHub release.
 
-For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots.
+For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. To change what an ingredient weighs, edit `scripts/foods/foods.txt` and run `python3 scripts/foods/build.py`; see [`scripts/foods/README.md`](scripts/foods/README.md). `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots.
 
 The server is Go with SQLite (pure Go, FTS5 for search). The client is Svelte 5. Typefaces are Vollkorn and Figtree, icons are Lucide, all under open licenses. Demo photos in the screenshots are from Unsplash.
 
