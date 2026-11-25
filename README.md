@@ -33,6 +33,34 @@
   <img src="docs/screenshots/mobile-add.jpg" width="24%" alt="Adding a recipe on a phone">
 </p>
 
+## Fond, Mealie and Tandoor
+
+Mealie and Tandoor are good, mature projects, and both do things Fond does not. Fond exists for people who want less of an application and more of a cookbook. Checked against the source of Mealie 3.31 and Tandoor 2.6 in November 2026.
+
+| | Fond | Mealie | Tandoor |
+| --- | --- | --- | --- |
+| What you run | One container, one SQLite file | One container (SQLite) or app + PostgreSQL | App + PostgreSQL in the official setup |
+| Memory | About 30 MB measured | Docs suggest a 1000 MB container limit | No figure published |
+| Ingredients | Plain text, parsed on the fly | Foods and units kept in a database | Foods and units kept in a database |
+| Scaling and unit conversion | Yes, with no setup | Yes, once ingredients are parsed and linked | Yes, with unit conversions you define |
+| Baker's percentages and hydration | **Yes** | No | No |
+| Step timers | **Yes**, and they complete the step | No | Yes |
+| Tick off ingredients and steps | **Yes**, and it survives a reload | Yes | Yes |
+| Screen stays awake | Yes | Yes | Yes |
+| Cookbooks | Hand-arranged, with chapters; a recipe can be in many | Saved filters over categories and tags | Hand-arranged books |
+| Typeset print and share pages | **Three styles, four paper sizes, QR code** | Print view | Print view |
+| Share a whole cookbook by link | **Yes**, per cookbook | Only by making the group public | With other accounts |
+| Android share sheet | Yes | No | Yes |
+| iPhone share sheet | Shortcut | Shortcut | Shortcut |
+| Sites that block servers | Browser bookmark sends the loaded page | Paste the page's HTML by hand | Bookmarklet |
+| Imports from Mealie | **Yes**: backup, export or live API | n/a | Yes |
+| Meal planner | No | **Yes** | **Yes** |
+| Single sign-on (OIDC) | No | **Yes** | **Yes** |
+| Nutrition and food data | Shown when a recipe has it | **Yes**, per food | **Yes**, per food and property |
+| Importers from other apps | Mealie only | **Many** | **Many** |
+
+Pick Mealie or Tandoor if you want meal planning, single sign-on or detailed nutrition tracking. Pick Fond if you mostly want to save recipes quickly, cook from them comfortably and print or share them looking good.
+
 ## Install
 
 ### Unraid
