@@ -1,3 +1,4 @@
+import { flushSync } from 'svelte';
 import { get, post, put, setUnauthorizedHandler } from './api';
 import { DEFAULT_PREFS, type Card, type Cookbook, type Prefs, type User } from './types';
 import { ensureFoods, loadRules } from './weigh.svelte';
@@ -19,6 +20,10 @@ export const app = $state({
   addClip: '',
   online: navigator.onLine,
 });
+
+// What the library was showing, so coming back from a recipe finds the same list at the same spot.
+const LIBRARY_VIEW = { q: '', fav: false, quick: false, tag: '', limit: 60 };
+export const libraryView = { ...LIBRARY_VIEW };
 
 export const toasts = $state({ list: [] as { id: number; msg: string; bad?: boolean; action?: { label: string; run: () => void } }[] });
 let toastId = 0;
@@ -63,10 +68,12 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 
 const scrolls = new Map<string, number>();
 let navKey = 0;
+let stopHolding = () => {};
 
 export function go(to: string, opts: { replace?: boolean } = {}) {
   const url = new URL(to, location.origin);
   if (url.pathname === app.path && url.search === app.query) return;
+  stopHolding();
   scrolls.set(String(history.state?.k ?? 0), scrollY);
   const apply = () => {
     if (opts.replace) history.replaceState({ k: history.state?.k ?? 0 }, '', url);
@@ -76,17 +83,43 @@ export function go(to: string, opts: { replace?: boolean } = {}) {
     scrollTo(0, 0);
   };
   const vt = (document as any).startViewTransition;
-  if (vt && !matchMedia('(prefers-reduced-motion: reduce)').matches) vt.call(document, apply);
+  // Leaving from an open sheet, its own exit is the animation; a cross-fade as well would show the sheet twice.
+  const sheet = document.querySelector('[aria-modal="true"]');
+  if (vt && !sheet && !matchMedia('(prefers-reduced-motion: reduce)').matches) vt.call(document, apply);
   else apply();
 }
 
 addEventListener('popstate', () => {
+  stopHolding();
   app.path = location.pathname;
   app.query = location.search;
-  const y = scrolls.get(String(history.state?.k ?? 0)) ?? 0;
-  requestAnimationFrame(() => requestAnimationFrame(() => scrollTo(0, y)));
+  // Draw the page now and scroll it before the next paint, so going back never shows the wrong spot first.
+  flushSync();
+  restoreScroll(scrolls.get(String(history.state?.k ?? 0)) ?? 0);
 });
 history.scrollRestoration = 'manual';
+
+// The place may not exist yet: a recipe loads after it appears, and the library grows as it is scrolled.
+// Keep returning to it as the page grows, until it is reached or the reader starts scrolling themselves.
+const TAKEOVER = ['pointerdown', 'touchstart', 'wheel', 'keydown'] as const;
+function restoreScroll(y: number) {
+  scrollTo(0, y);
+  if (Math.abs(scrollY - y) < 2) return;
+  const ro = new ResizeObserver(() => {
+    scrollTo(0, y);
+    if (Math.abs(scrollY - y) < 2) stop();
+  });
+  const timer = setTimeout(() => stop(), 2000);
+  const stop = () => {
+    ro.disconnect();
+    clearTimeout(timer);
+    for (const t of TAKEOVER) removeEventListener(t, stop, true);
+    stopHolding = () => {};
+  };
+  for (const t of TAKEOVER) addEventListener(t, stop, { capture: true, passive: true });
+  ro.observe(document.body);
+  stopHolding = stop;
+}
 
 addEventListener('click', (e) => {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -162,6 +195,7 @@ export async function logout() {
   app.user = null;
   app.recipes = [];
   app.recipesLoaded = false;
+  Object.assign(libraryView, LIBRARY_VIEW);
   go('/login', { replace: true });
 }
 

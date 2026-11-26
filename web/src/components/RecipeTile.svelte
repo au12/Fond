@@ -23,7 +23,7 @@
   }
 </script>
 
-<a class="tile" href={recipePath(r)} style:view-transition-name={`photo-${r.id}`}>
+<a class="tile" href={recipePath(r)}>
   <div class="photo"><Photo image={r.image} color={r.color} title={r.title} tags={r.tags} eager={i < 8} /></div>
   <button class="fav" class:on={r.fav} class:pop={popping} onanimationend={() => (popping = false)} onclick={fav} aria-label={r.fav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={r.fav}><Heart /></button>
   <h3>{r.title}</h3>

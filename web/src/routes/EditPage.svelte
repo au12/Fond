@@ -2,6 +2,7 @@
   import ResolveSheet from '../components/ResolveSheet.svelte';
   import TagInput from '../components/TagInput.svelte';
   import { api, del, get, img, post, put } from '../lib/api';
+  import { grow } from '../lib/grow';
   import { parseIngredient, show } from '../lib/ingredients';
   import { prefs } from '../lib/state.svelte';
   import { dict, ensureFoods, weighOptions } from '../lib/weigh.svelte';
@@ -151,15 +152,6 @@
   function paste(e: ClipboardEvent) {
     const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/'));
     if (f) pick(f);
-  }
-  function grow(node: HTMLTextAreaElement) {
-    const fit = () => {
-      node.style.height = 'auto';
-      node.style.height = node.scrollHeight + 2 + 'px';
-    };
-    node.addEventListener('input', fit);
-    queueMicrotask(fit);
-    return { update: fit, destroy: () => node.removeEventListener('input', fit) };
   }
 </script>
 
