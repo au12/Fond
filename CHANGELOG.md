@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Cookbook pages are re-typeset** after a classic cookbook spread: the chapter as a running head, the title in letterspaced capitals, a justified headnote over a hairline, the yield and times above a narrow sans-serif ingredient column, the method beside it with small hanging step numbers, the notes in a tinted box at the foot of the page and the recipe's number beneath. Modern and Compact share the new structure.
+- **A photograph faces its recipe.** In a shared cookbook each recipe is a spread, photo on the left; on a phone the photo sits above the recipe. Printed, the photo takes a page of its own, to the edges of the paper.
+- **A printed recipe keeps to one sheet when it can.** The photo and the whole ingredient list stay on the first page. The print preview is now a scale model of the sheet: it sets the recipe at up to five tightnesses, uses the roomiest that fits one page, never goes below about 10 pt, and says how many pages will print.
+- **Cookbook covers are bound in leather**, with grain, a hinge by the spine and stamped lettering, in all seven colours.
+- Fixed: printed notes could jump to a second page with room to spare; the Compact style drew a stray outline.
+
 ## 2.0.0
 
 Fond learns to weigh, and to remember.

@@ -18,7 +18,7 @@
 - **Baker's percentages.** For any recipe with flour: percentages against total flour, hydration, salt, and "make it with 800 g of flour" scaling. A starter is split into flour and water at the hydration you keep it at.
 - **Every version kept.** Change the ingredients or the method and the recipe as it was is kept. The history shows what changed, line by line, and brings any version back.
 - **Cookbooks.** Collect recipes into books with chapters. A recipe can live in as many books as you like.
-- **Beautifully typeset.** Shared links, printouts and cookbooks are set in real book typography, in a classic, modern or compact style, on Letter, A4, half-letter or 4 × 6 cards, with an optional QR code back to the recipe.
+- **Beautifully typeset.** Shared links, printouts and cookbooks are set like a real cookbook page: a letterspaced title, a justified headnote, a narrow ingredient column beside the method, and the cook's notes in a tinted box. In a cookbook each photograph fills the page facing its recipe. A printed recipe keeps its photo and its whole ingredient list on the first page, and is tightened (never below about 10 pt) to stay on one sheet when it can. Classic, modern or compact style, on Letter, A4, half-letter or 4 × 6 cards, with an optional QR code back to the recipe.
 - **Light.** A ~21 MB image, about 30 MB of RAM, and a 103 KB (gzipped) web app, plus 22 KB for the ingredient table. No external database, cache or queue.
 - **Safe to put on the internet.** See [Security](#security).
 
@@ -217,7 +217,7 @@ FOND_DATA=./data go run ./cmd/fond                 # http://localhost:8080
 
 Releases are cut by changing the number in `VERSION`; the workflow then publishes the versioned image and creates the GitHub release.
 
-For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. To change what an ingredient weighs, edit `scripts/foods/foods.txt` and run `python3 scripts/foods/build.py`; see [`scripts/foods/README.md`](scripts/foods/README.md). `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots.
+For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. To change what an ingredient weighs, edit `scripts/foods/foods.txt` and run `python3 scripts/foods/build.py`; see [`scripts/foods/README.md`](scripts/foods/README.md). `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots, and `scripts/leather.py` redraws the leather grain on the cookbook covers.
 
 The server is Go with SQLite (pure Go, FTS5 for search). The client is Svelte 5. Typefaces are Vollkorn and Figtree, icons are Lucide, all under open licenses. Demo photos in the screenshots are from Unsplash.
 

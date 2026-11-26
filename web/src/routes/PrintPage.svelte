@@ -28,18 +28,52 @@
   if (kind === 'recipe') get<Recipe>(`/recipes/${id}`).then((r) => (recipe = r)).catch(oops);
   else get<{ cookbook: Cookbook; recipes: Recipe[] }>(`/cookbooks/${id}?full=1`).then((x) => { book = x.cookbook; recipes = x.recipes; look = x.cookbook.style; }).catch(oops);
 
-  const PAPER: Record<string, { css: string; label: string; w: number }> = {
-    letter: { css: 'letter', label: 'Letter', w: 816 },
-    a4: { css: 'A4', label: 'A4', w: 794 },
-    half: { css: '5.5in 8.5in', label: 'Half letter', w: 528 },
-    card: { css: '6in 4in', label: '4 × 6 card', w: 576 },
+  // Sizes in points. The preview is a scale model of the sheet, so what fits here fits on paper.
+  const PAPER: Record<string, { css: string; label: string; w: number; h: number }> = {
+    letter: { css: 'letter', label: 'Letter', w: 612, h: 792 },
+    a4: { css: 'A4', label: 'A4', w: 595.3, h: 841.9 },
+    half: { css: '5.5in 8.5in', label: 'Half letter', w: 396, h: 612 },
+    card: { css: '6in 4in', label: '4 × 6 card', w: 432, h: 288 },
   };
   const qrLink = $derived(recipe ? (recipe.shareToken ? `${app.origin}/s/${recipe.shareToken}` : recipe.sourceUrl) : '');
+  let vw = $state(window.innerWidth);
+  const page = $derived.by(() => {
+    const small = paper === 'card' || paper === 'half';
+    const { w, h, css } = PAPER[paper];
+    const mx = small ? 25.2 : 57.6;
+    const my = small ? 25.2 : 54;
+    return { w, h, css, mx, my, pt: small ? Math.min(size, 9) : size, px: Math.min(4 / 3, (vw - 28) / w) };
+  });
+
+  // One sheet when it can be: the recipe is set at each tightness out of sight, and the roomiest that fits wins.
+  // Nothing goes below about 10 pt, and a recipe too long for one sheet is only tightened until its ingredients stay on the first.
+  const FITS = [0, 1, 2, 3, 4];
+  let heights = $state<number[]>([0, 0, 0, 0, 0]);
+  const room = $derived((page.h - 2 * page.my) * page.px - 3);
+  let probes = $state<HTMLElement[]>([]);
+  // Where the ingredient list ends at each tightness, so a two-sheet recipe still keeps its whole list on the first.
+  const listEnds = $derived(FITS.map((f) => {
+    const el = heights[f] > 0 ? probes[f] : null;
+    const ing = el?.querySelector('.doc-ing');
+    return el && ing ? ing.getBoundingClientRect().bottom - el.getBoundingClientRect().top : 0;
+  }));
+  const fit = $derived.by(() => {
+    if (!recipe || look === 'card' || paper === 'card') return 0;
+    const whole = FITS.findIndex((f) => heights[f] > 0 && heights[f] <= room);
+    if (whole >= 0) return whole;
+    const list = FITS.findIndex((f) => listEnds[f] > 0 && listEnds[f] <= room);
+    return list < 0 ? 0 : list;
+  });
+  const sheets = $derived(recipe && heights[fit] > 0 ? Math.ceil(heights[fit] / room) : 0);
 
   $effect(() => {
-    const small = paper === 'card' || paper === 'half';
+    const p = page;
+    const u = (n: number) => `${(n * p.px).toFixed(2)}px`;
     const el = document.createElement('style');
-    el.textContent = `@page { size: ${PAPER[paper].css}; margin: ${small ? '0.35in' : '0.75in 0.8in'}; } @media print { .doc { --print-size: ${small ? Math.min(size, 9) : size}pt; } }`;
+    el.textContent =
+      `@page { size: ${p.css}; margin: ${p.my}pt ${p.mx}pt; } @page plate { margin: 0; }` +
+      `@media screen { .stage { font-size: ${u(p.pt)}; --page-w: ${u(p.w)}; --page-h: ${u(p.h)}; --page-mx: ${u(p.mx)}; --page-my: ${u(p.my)}; --page-ch: ${u(p.h - 2 * p.my)}; } }` +
+      `@media print { .doc { --print-size: ${p.pt}pt; } .stage { --page-w: ${p.w}pt; --page-h: ${p.h}pt; --page-ch: ${p.h - 2 * p.my}pt; } }`;
     document.head.append(el);
     document.documentElement.classList.add('printing');
     return () => {
@@ -68,15 +102,23 @@
     <button class="chip" class:on={photo} onclick={() => (photo = !photo)} aria-pressed={photo}>Photo</button>
     <button class="chip" class:on={notes} onclick={() => (notes = !notes)} aria-pressed={notes}>Notes</button>
     {#if kind === 'recipe' && qrLink}<button class="chip" class:on={qr} onclick={() => (qr = !qr)} aria-pressed={qr}>QR code</button>{/if}
+    {#if sheets}<span class="pages faint small num">{sheets === 1 ? '1 page' : `${sheets} pages`}</span>{/if}
   </div>
   <button class="btn primary" onclick={print}><Printer />Print</button>
 </div>
 
-<div class="stage" style:--w={`${PAPER[paper].w}px`} style:font-size={`${size * 1.28}px`}>
+<svelte:window bind:innerWidth={vw} />
+
+<div class="stage">
   {#if recipe}
-    <div class="sheet-paper"><RecipeDoc r={recipe} {look} {opts} temp={pf.temp} {photo} {notes} qr={qr ? qrLink : ''} /></div>
+    <div class="sheet-paper"><RecipeDoc r={recipe} {look} {opts} temp={pf.temp} {photo} {notes} qr={qr ? qrLink : ''} paged {fit} /></div>
+    <div class="measure noprint" aria-hidden="true" inert>
+      {#each FITS as f}
+        <div bind:this={probes[f]} bind:clientHeight={heights[f]}><RecipeDoc r={recipe} {look} {opts} temp={pf.temp} {photo} {notes} qr={qr ? qrLink : ''} paged measure fit={f} /></div>
+      {/each}
+    </div>
   {:else if book}
-    <BookDoc {book} {recipes} {opts} temp={pf.temp} {photo} {notes} />
+    <BookDoc {book} {recipes} {opts} temp={pf.temp} {photo} {notes} paged />
   {/if}
 </div>
 
@@ -84,11 +126,22 @@
   .printbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px clamp(12px, 3vw, 28px); background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
   .opts { flex: 1; display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; justify-content: center; }
   .mini { width: auto; min-height: 36px; height: 36px; padding: 0 32px 0 12px; border-radius: 999px; font-size: 0.86rem; flex: none; }
-  .stage { display: grid; gap: 28px; justify-content: center; padding: 28px 14px 80px; background: var(--sunk); min-height: 100dvh; }
-  .stage > :global(.sheet-paper) { width: min(var(--w), calc(100vw - 28px)); }
-  .stage > :global(.book-cover) { padding: 0; background: none; box-shadow: none; }
-  @media (max-width: 700px) { .opts { justify-content: flex-start; } .stage { font-size: 13px !important; } }
+  .pages { flex: none; padding: 0 4px; }
+  .stage { position: relative; display: grid; gap: 28px; justify-content: center; padding: 28px 14px 80px; background: var(--sunk); min-height: 100dvh; overflow: hidden; }
+  .stage > :global(.sheet-paper) { width: var(--page-w); min-height: var(--page-h); padding: var(--page-my) var(--page-mx); }
+  .stage > :global(.book-cover) { padding: 0; min-height: 0; background: none; box-shadow: none; }
+  .stage > :global(.book-cover .cover) { aspect-ratio: auto; height: var(--page-h); }
+  /* A cookbook spread is shown as its two sheets: the photograph to the edges, then the recipe. */
+  .stage > :global(.sheet-paper.bleed) { padding: 0; min-height: 0; background: none; box-shadow: none; overflow: visible; }
+  .stage :global(.doc.facing .doc-plate) { height: var(--page-h); margin-bottom: 28px; box-shadow: var(--shadow-lg); border-radius: 4px; overflow: hidden; }
+  .stage :global(.doc.facing .doc-plate img) { height: 100%; aspect-ratio: auto; }
+  .stage :global(.doc.facing .doc-page) { box-sizing: border-box; min-height: var(--page-h); padding: var(--page-my) var(--page-mx); background: #fff; box-shadow: var(--shadow-lg); border-radius: 4px; }
+  .measure { position: absolute; left: 0; top: 0; width: calc(var(--page-w) - 2 * var(--page-mx)); visibility: hidden; pointer-events: none; }
+  @media (max-width: 700px) { .opts { justify-content: flex-start; } }
   @media print {
-    .stage { display: block; padding: 0; background: none; min-height: 0; font-size: inherit !important; }
+    .stage { display: block; padding: 0; background: none; min-height: 0; overflow: visible; }
+    .stage :global(.doc.facing .doc-plate) { margin: 0; box-shadow: none; border-radius: 0; }
+    .stage :global(.doc.facing .doc-page) { min-height: calc(var(--page-ch) - 4pt); padding: 0; box-shadow: none; }
+    .stage > :global(.book-cover .cover) { height: 100vh; }
   }
 </style>

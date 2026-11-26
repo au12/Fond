@@ -4,7 +4,7 @@
   import type { DisplayOptions } from '../lib/ingredients';
   import type { Cookbook, Recipe } from '../lib/types';
 
-  let { book, recipes, opts, temp = 'original', photo = true, notes = true }: { book: Cookbook; recipes: Recipe[]; opts: DisplayOptions; temp?: 'original' | 'C' | 'F'; photo?: boolean; notes?: boolean } = $props();
+  let { book, recipes, opts, temp = 'original', photo = true, notes = true, paged = false }: { book: Cookbook; recipes: Recipe[]; opts: DisplayOptions; temp?: 'original' | 'C' | 'F'; photo?: boolean; notes?: boolean; paged?: boolean } = $props();
 
   // Recipes in reading order, grouped by chapter, numbered through the book.
   const sections = $derived.by(() => {
@@ -27,8 +27,8 @@
 
 <div class="sheet-paper page-break">
   <div class="toc">
-    <h1 style="font:600 2.2em/1.1 var(--serif);text-align:center">Contents</h1>
-    {#if book.description}<p style="margin-top:0.8em;text-align:center;font-style:italic;color:#5a655e;white-space:pre-line">{book.description}</p>{/if}
+    <h1>Contents</h1>
+    {#if book.description}<p class="toc-intro">{book.description}</p>{/if}
     {#each sections as g}
       {#if g.name}<h2>{g.name}</h2>{:else}<div style="height:1.2em"></div>{/if}
       {#each g.items as it}
@@ -40,6 +40,6 @@
 
 {#each sections as g}
   {#each g.items as it (it.r.id)}
-    <div class="sheet-paper page-break"><RecipeDoc r={it.r} look={book.style} {opts} {temp} {photo} {notes} number={it.n} chapter={g.name} /></div>
+    <div class="sheet-paper bleed page-break"><RecipeDoc r={it.r} look={book.style} {opts} {temp} {photo} {notes} {paged} spread number={it.n} chapter={g.name} /></div>
   {/each}
 {/each}

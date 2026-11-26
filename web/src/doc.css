@@ -3,123 +3,179 @@
 .doc {
   --d-accent: var(--bay);
   --d-ink: #1c231f;
-  --d-soft: #5a655e;
+  --d-soft: #6b756e;
   --d-rule: #cfd5ca;
+  --d-tint: #f0eee8;
+  --k: 1;
+  --photo-h: 19em;
   color: var(--d-ink);
-  font: 400 1em/1.55 var(--serif);
+  font: 400 calc(var(--doc-size, 1em) * var(--k)) / 1.56 var(--serif);
   font-variant-numeric: oldstyle-nums proportional-nums;
   font-feature-settings: 'liga', 'calt';
   text-rendering: optimizeLegibility;
 }
-:root[data-theme='dark'] .doc { --d-ink: var(--ink); --d-soft: var(--ink-2); --d-rule: var(--line-2); }
-.sheet-paper .doc, .printing .doc { --d-ink: #1c231f; --d-soft: #5a655e; --d-rule: #cfd5ca; --d-accent: #2c4a3a; }
+:root[data-theme='dark'] .doc { --d-ink: var(--ink); --d-soft: var(--ink-2); --d-rule: var(--line-2); --d-tint: var(--wash); }
+.sheet-paper .doc, .printing .doc { --d-ink: #1c231f; --d-soft: #6b756e; --d-rule: #cfd5ca; --d-accent: #2c4a3a; --d-tint: #f0eee8; }
 
-.doc h1 { font: 600 2.5em/1.08 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
-.doc h2 { font: italic 500 1.2em/1.2 var(--serif); color: var(--d-accent); margin-bottom: 0.6em; }
-.doc-kicker { display: flex; gap: 0.9em; justify-content: center; font-style: italic; color: var(--d-soft); margin-bottom: 0.7em; }
-.doc-no { color: var(--d-accent); font-weight: 600; font-style: normal; }
-.doc-desc { margin-top: 0.75em; font-style: italic; font-size: 1.08em; line-height: 1.5; color: var(--d-soft); white-space: pre-line; }
-.doc-facts { display: flex; flex-wrap: wrap; gap: 0.3em 2.2em; margin-top: 1.3em; padding: 0.7em 0; border-top: 1px solid var(--d-rule); border-bottom: 1px solid var(--d-rule); }
-.doc-facts dt { font-style: italic; font-size: 0.86em; color: var(--d-soft); }
-.doc-facts dd { font-weight: 600; }
-.doc-photo { margin: 1.6em 0 0; }
-.doc-photo img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 3px; }
-.doc-body { display: grid; grid-template-columns: minmax(0, 0.36fr) minmax(0, 0.64fr); gap: 2.6em; margin-top: 1.9em; align-items: start; }
-.doc-ing ul { line-height: 1.42; }
-.doc-ing li { padding: 0.28em 0; break-inside: avoid; }
+/* Small letterspaced capitals: running heads, yields, group headings. */
+.doc-run, .doc-facts, .doc-group, .doc-foot { font-family: var(--sans); font-size: 0.66em; line-height: 1.5; letter-spacing: 0.2em; text-transform: uppercase; color: var(--d-soft); font-variant-numeric: lining-nums; }
+
+.doc-run { text-align: center; letter-spacing: 0.3em; margin-bottom: 2.6em; }
+.doc-head { padding-bottom: 1.5em; border-bottom: 1px solid var(--d-rule); }
+.doc h1 { font: 400 1.5em/1.3 var(--serif); letter-spacing: 0.16em; text-transform: uppercase; text-align: center; text-wrap: balance; font-variant-numeric: lining-nums; }
+.doc-desc { margin-top: 1.1em; line-height: 1.62; text-align: justify; text-wrap: pretty; hyphens: auto; -webkit-hyphens: auto; white-space: pre-line; }
+
+.doc-plate img { width: 100%; height: var(--photo-h); object-fit: cover; }
+.doc-plate { margin-bottom: 2.2em; }
+
+.doc-body { display: grid; grid-template-columns: minmax(0, 0.31fr) minmax(0, 0.69fr); gap: 2.6em; margin-top: 1.6em; align-items: start; }
+.doc-facts div { display: flex; gap: 0.7em; }
+.doc-facts dt { opacity: 0.8; }
+.doc-facts::after { content: ''; display: block; width: 1.8em; margin: 1.3em 0 1.4em; border-top: 1px solid currentColor; opacity: 0.6; }
+.doc-ing ul { font-family: var(--sans); font-size: 0.86em; line-height: 1.36; font-variant-numeric: lining-nums; }
+.doc-ing li { padding: 0.24em 0 0.24em 0.9em; text-indent: -0.9em; break-inside: avoid; }
 .doc-ing .q { font-weight: 600; }
-.doc-ing .also { color: #5a655e; font-size: 0.92em; white-space: nowrap; }
-.doc-group { margin-top: 0.9em; font-style: italic; font-weight: 600; color: var(--d-soft); }
-.doc-ing li.doc-group:first-child { margin-top: 0; }
-.doc-step { display: grid; grid-template-columns: 1.7em minmax(0, 1fr); gap: 0.5em; padding-bottom: 0.85em; break-inside: avoid; }
-.doc-step .n { font-size: 1.5em; line-height: 1.05; font-weight: 500; color: var(--d-accent); font-variant-numeric: oldstyle-nums; }
-.doc-notes { margin-top: 1.2em; padding-top: 1em; border-top: 1px solid var(--d-rule); font-size: 0.95em; break-inside: avoid; }
-.doc-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 1em; margin-top: 2em; padding-top: 0.8em; border-top: 1px solid var(--d-rule); font-size: 0.85em; font-style: italic; color: var(--d-soft); }
-.doc-foot p { display: flex; flex-wrap: wrap; gap: 0.2em 1.2em; }
+.doc-ing .also { color: var(--d-soft); white-space: nowrap; }
+.doc li.doc-group { margin-top: 1.5em; padding: 0 0 0.4em; text-indent: 0; font-weight: 600; break-after: avoid; }
+.doc li.doc-group:first-child { margin-top: 0; }
+.doc-step { position: relative; padding-bottom: 0.9em; break-inside: avoid; }
+.doc-step .n { position: absolute; right: 100%; top: 0.42em; margin-right: 0.9em; font: 600 0.7em/1.5 var(--sans); color: var(--d-soft); font-variant-numeric: lining-nums; }
+.doc-step:last-child { padding-bottom: 0; }
+
+/* The cook's notes sit in a tinted box at the foot of the page. */
+.doc-notes { display: flex; gap: 1.2em; margin-top: 2em; padding: 1.15em 1.5em 1.15em 1.1em; background: var(--d-tint); font: 400 0.84em/1.5 var(--sans); break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.doc-notes h2 { flex: none; writing-mode: vertical-rl; transform: rotate(180deg); padding-left: 0.9em; border-left: 1px solid var(--d-rule); font: italic 400 1.1em/1 var(--serif); color: var(--d-soft); text-align: center; }
+.doc-notes > div { align-self: center; min-width: 0; }
+.doc-foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 1em; margin-top: 1.8em; }
+.doc-foot p { display: flex; flex-wrap: wrap; gap: 0.2em 1.4em; }
 .doc-foot a { text-decoration: underline; text-decoration-color: var(--d-rule); text-underline-offset: 3px; }
+.doc-folio { letter-spacing: 0.1em; }
+.doc-qr { justify-self: end; }
 .doc-qr svg { display: block; }
 
-/* Classic: a centred head, like a well-made cookbook page. */
-.doc.classic .doc-head { text-align: center; }
-.doc.classic .doc-desc { max-width: 46em; margin-inline: auto; }
-.doc.classic .doc-facts { justify-content: center; }
-
 /* Modern: sans headings, flush left, a tinted ingredient panel. */
-.doc.modern { font-family: var(--sans); font-variant-numeric: lining-nums proportional-nums; line-height: 1.6; }
-.doc.modern h1 { font: 800 2.7em/1.02 var(--sans); letter-spacing: -0.035em; }
-.doc.modern h2 { font: 700 0.95em/1.2 var(--sans); color: var(--d-ink); letter-spacing: 0; }
-.doc.modern .doc-kicker { justify-content: flex-start; font-style: normal; font-weight: 600; }
-.doc.modern .doc-desc { font-style: normal; font-family: var(--serif); }
-.doc.modern .doc-facts { border: 0; padding: 0; gap: 0.5em; }
-.doc.modern .doc-facts div { padding: 0.45em 0.95em; border-radius: 999px; background: #fbf2cb; color: #2a2508; display: flex; gap: 0.5em; align-items: baseline; }
-.doc.modern .doc-facts dt { font-style: normal; color: inherit; opacity: 0.75; }
-.doc.modern .doc-photo img { border-radius: 14px; }
-.doc.modern .doc-ing { padding: 1.2em 1.3em; border-radius: 14px; background: #eef2ea; }
-:root[data-theme='dark'] .doc.modern .doc-ing { background: var(--wash); }
-.sheet-paper .doc.modern .doc-ing, .printing .doc.modern .doc-ing { background: #eef2ea; }
-.doc.modern .doc-group { font-style: normal; }
-.doc.modern .doc-step { grid-template-columns: 2.1em minmax(0, 1fr); }
-.doc.modern .doc-step .n { width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--d-accent); color: #fff; font: 700 0.95em/1.5em var(--sans); text-align: center; font-variant-numeric: lining-nums; margin-top: 0.1em; }
-:root[data-theme='dark'] .doc.modern .doc-step .n { color: var(--on-bay); }
-.sheet-paper .doc.modern .doc-step .n, .printing .doc.modern .doc-step .n { color: #fff; }
-.doc.modern .doc-foot { font-style: normal; }
+.doc.modern { font-family: var(--sans); font-variant-numeric: lining-nums proportional-nums; }
+.doc.modern h1 { font: 800 2.3em/1.04 var(--sans); letter-spacing: -0.03em; text-transform: none; text-align: left; }
+.doc.modern .doc-run { text-align: left; font-weight: 700; margin-bottom: 1.6em; }
+.doc.modern .doc-head { border: 0; padding-bottom: 0; }
+.doc.modern .doc-desc { font-family: var(--serif); text-align: left; hyphens: manual; }
+.doc.modern .doc-ing { padding: 1.2em 1.3em; border-radius: 12px; background: var(--d-tint); print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.doc.modern .doc-step .n { color: var(--d-accent); font-size: 0.82em; font-weight: 800; top: 0.26em; }
+.doc.modern .doc-notes { border-radius: 12px; }
+.doc.modern .doc-notes h2 { font: 700 0.86em/1 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; }
+.doc.modern .doc-plate img { border-radius: 12px; }
 
-/* Card: one tight column for index cards and half sheets. */
-.doc.card { font-size: 0.92em; }
-.doc.card h1 { font-size: 1.8em; }
-.doc.card .doc-body { grid-template-columns: 1fr; gap: 1.2em; margin-top: 1.1em; }
+/* Compact: one tight column for index cards and half sheets. */
+.doc.card { --k: 0.92; background: none; border-radius: 0; box-shadow: none; }
+.doc.card h1 { font-size: 1.25em; }
+.doc.card .doc-head { padding-bottom: 0.9em; }
+.doc.card .doc-body { display: block; margin-top: 1em; }
+.doc.card .doc-ing { margin-bottom: 1.2em; }
 .doc.card .doc-ing ul { columns: 2; column-gap: 2em; }
-.doc.card .doc-facts { margin-top: 0.8em; padding: 0.45em 0; }
-.doc.card .doc-photo { display: none; }
+.doc.card .doc-facts { display: flex; flex-wrap: wrap; gap: 0 1.6em; }
+.doc.card .doc-facts::after { display: none; }
+.doc.card .doc-ing ul { margin-top: 0.8em; }
+.doc.card .doc-step { padding-left: 1.7em; }
+.doc.card .doc-step .n { right: auto; left: 0; }
+.doc.card .doc-plate { display: none; }
+.doc.card .doc-notes { margin-top: 1.2em; padding: 0.8em 1em; }
 
-@container (max-width: 560px) {
-  .doc h1 { font-size: 2em; }
-  .doc-body { grid-template-columns: 1fr; gap: 1.6em; }
+/* Tighter settings, tried in turn by the print page until a recipe fits one sheet. */
+.doc.fit-1 { --photo-h: 14.5em; }
+.doc.fit-2 { --photo-h: 11.5em; --k: 0.955; }
+.doc.fit-3 { --photo-h: 9.5em; --k: 0.91; line-height: 1.5; }
+.doc.fit-4 { --photo-h: 7em; --k: 0.91; line-height: 1.5; }
+.doc.fit-1 .doc-plate, .doc.fit-2 .doc-plate, .doc.fit-3 .doc-plate, .doc.fit-4 .doc-plate { margin-bottom: 1.6em; }
+.doc.fit-2 .doc-head, .doc.fit-3 .doc-head, .doc.fit-4 .doc-head { padding-bottom: 1.1em; }
+.doc.fit-2 .doc-body, .doc.fit-3 .doc-body, .doc.fit-4 .doc-body { margin-top: 1.2em; }
+.doc.fit-2 .doc-notes, .doc.fit-3 .doc-notes, .doc.fit-4 .doc-notes { margin-top: 1.3em; padding-block: 0.85em; }
+.doc.fit-2 .doc-foot, .doc.fit-3 .doc-foot, .doc.fit-4 .doc-foot { margin-top: 1.1em; }
+.doc.fit-3 .doc-desc, .doc.fit-4 .doc-desc { line-height: 1.5; }
+.doc.fit-3 .doc-step, .doc.fit-4 .doc-step { padding-bottom: 0.7em; }
+
+/* A spread: the photograph fills one page and faces the recipe. */
+.sheet-paper.bleed { padding: 0; overflow: hidden; }
+.doc.facing { font-size: calc(clamp(13.5px, 1.36cqw, 17px) * var(--k)); }
+.doc.facing .doc-page { display: flex; flex-direction: column; padding: clamp(22px, 6.5cqw, 3.6em); }
+.doc.facing .doc-plate { margin: 0; }
+.doc.facing .doc-plate img { height: 100%; aspect-ratio: 4 / 3; border-radius: 0; }
+.doc.facing .doc-body { margin-bottom: auto; }
+.doc.facing:not(.has-photo) .doc-page { max-width: 50em; margin-inline: auto; }
+@container (min-width: 900px) {
+  .doc.facing.has-photo { display: grid; grid-template-columns: 1fr 1fr; min-height: 64.7cqw; }
+  .doc.facing.has-photo .doc-plate { position: relative; }
+  .doc.facing.has-photo .doc-plate img { position: absolute; inset: 0; aspect-ratio: auto; }
+  .doc.facing.has-photo .doc-page { padding: 3.4em 3.6em 2.6em; }
 }
+@container (max-width: 560px) {
+  .doc h1 { font-size: 1.3em; letter-spacing: 0.12em; }
+  .doc-body { display: block; }
+  .doc-ing { margin-bottom: 1.8em; }
+  .doc-step { padding-left: 1.7em; }
+  .doc-step .n { right: auto; left: 0; }
+  .doc-plate img { height: auto; aspect-ratio: 4 / 3; }
+}
+
+/* On paper. Grids fragment badly across pages; floats flow cleanly. */
+.doc.paged:not(.card) .doc-body { display: block; }
+.doc.paged .doc-body::after { content: ''; display: block; clear: both; }
+.doc.paged:not(.card) .doc-ing { float: left; width: 30%; }
+.doc.paged:not(.card) .doc-method { margin-left: 35.5%; }
+.doc.paged, .doc.paged.facing { font-size: calc(var(--doc-size, 1em) * var(--k)); }
+.doc.paged.facing, .doc.paged.facing.has-photo { display: block; min-height: 0; }
+.doc.paged.facing .doc-page, .doc.paged.facing.has-photo .doc-page { padding: 0; max-width: none; min-height: calc(var(--page-ch, 0px) - 4pt); }
+.doc.paged .doc-plate img { position: static; }
 
 /* ------------------------------------------------------------ paper preview & print */
 .sheet-paper { container-type: inline-size; background: #fff; color: #1c231f; border-radius: 4px; box-shadow: var(--shadow-lg); padding: clamp(22px, 6.5%, 64px); }
+
+/* Cookbook covers are bound in leather: grain, a soft sheen, a hinge by the spine and stamped lettering. */
 .cover {
-  --c: #2c4a3a; --c-ink: #f4f1e4;
+  --c: #2c4a3a; --c-ink: #f1e6c4; --c-deep: rgb(0 0 0 / 0.34);
   position: relative; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.5em;
-  aspect-ratio: 3 / 4; padding: 12%; border-radius: 0.5em 1.1em 1.1em 0.5em; background: var(--c); color: var(--c-ink);
-  font-family: var(--serif); container-type: inline-size; overflow: hidden;
-  box-shadow: inset 0.7em 0 0.9em -0.6em rgb(0 0 0 / 0.45), inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  aspect-ratio: 3 / 4; padding: 12%; border-radius: 0.5em 1.1em 1.1em 0.5em; color: var(--c-ink);
+  font-family: var(--serif); container-type: inline-size; overflow: hidden; isolation: isolate;
+  background-color: var(--c);
+  background-image:
+    linear-gradient(90deg, rgb(0 0 0 / 0.34) 0, rgb(255 255 255 / 0.1) 3.2%, rgb(0 0 0 / 0.3) 6.4%, rgb(255 255 255 / 0.07) 8.6%, transparent 12%),
+    linear-gradient(118deg, rgb(255 255 255 / 0.13) 0%, transparent 32%, transparent 62%, rgb(0 0 0 / 0.2) 100%),
+    radial-gradient(120% 90% at 46% 38%, transparent 42%, var(--c-deep) 100%),
+    url('./assets/leather.webp');
+  background-size: auto, auto, auto, 46% auto;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), inset 0 -0.25em 0.5em -0.2em rgb(0 0 0 / 0.4), inset 0 0.2em 0.4em -0.2em rgb(255 255 255 / 0.18);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.cover::before { content: ''; position: absolute; inset: 5.5%; border: 1px solid color-mix(in srgb, var(--c-ink) 55%, transparent); border-radius: 0.2em; pointer-events: none; }
-.cover::after { content: ''; position: absolute; inset: 7%; border: 1px solid color-mix(in srgb, var(--c-ink) 22%, transparent); border-radius: 0.1em; pointer-events: none; }
-.cover b { font: 600 17cqw/1.02 var(--serif); letter-spacing: -0.015em; text-wrap: balance; }
-.cover i { font-size: 7.5cqw; line-height: 1.3; opacity: 0.85; text-wrap: balance; }
-.cover svg { width: 15cqw; height: 15cqw; margin-top: 5cqw; opacity: 0.9; }
-.cover.bay { --c: #2c4a3a; } .cover.tomato { --c: #a8372a; } .cover.butter { --c: #ecc94f; --c-ink: #2b2507; }
-.cover.charcoal { --c: #23292c; } .cover.plum { --c: #4c2f4a; } .cover.ocean { --c: #23475c; } .cover.paper { --c: #efe9da; --c-ink: #2a2a22; }
+/* A blind-stamped frame: a groove with a lit lower edge. */
+.cover::before { content: ''; position: absolute; inset: 6% 6% 6% 13%; border: 1px solid rgb(0 0 0 / 0.38); border-radius: 0.2em; pointer-events: none; box-shadow: 0 1px 0 rgb(255 255 255 / 0.14), inset 0 1px 0 rgb(0 0 0 / 0.16), inset 0 0 0 0.55cqw transparent, inset 0 0 0 calc(0.55cqw + 1px) color-mix(in srgb, var(--c-ink) 42%, transparent); }
+.cover::after { content: none; }
+.cover > * { position: relative; left: 3.5%; }
+.cover b { font: 600 15.5cqw/1.04 var(--serif); letter-spacing: -0.012em; text-wrap: balance; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.42), 0 1px 0 rgb(255 255 255 / 0.16); }
+.cover i { font-size: 7cqw; line-height: 1.3; opacity: 0.88; text-wrap: balance; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.38); }
+.cover svg { width: 14cqw; height: 14cqw; margin-top: 5cqw; opacity: 0.9; filter: drop-shadow(0 -1px 0 rgb(0 0 0 / 0.4)); }
+.cover.bay { --c: #2b4737; } .cover.tomato { --c: #8f2f25; } .cover.butter { --c: #d9b23f; --c-ink: #33290a; --c-deep: rgb(92 58 0 / 0.36); }
+.cover.charcoal { --c: #24292c; } .cover.plum { --c: #4a2d48; } .cover.ocean { --c: #21445a; } .cover.paper { --c: #e6dcc6; --c-ink: #3a3122; --c-deep: rgb(96 72 30 / 0.3); }
+.cover.butter b, .cover.butter i, .cover.paper b, .cover.paper i { text-shadow: 0 1px 0 rgb(255 255 255 / 0.4); }
 
 .toc { font-family: var(--serif); }
-.toc h2 { font: italic 500 1.3em var(--serif); margin: 1.4em 0 0.4em; color: #2c4a3a; }
+.toc h1 { font: 400 1.5em/1.3 var(--serif); letter-spacing: 0.16em; text-transform: uppercase; text-align: center; }
+.toc-intro { margin: 1.1em auto 0; max-width: 34em; text-align: center; color: #5a655e; white-space: pre-line; }
+.toc h2 { margin: 2.2em 0 0.7em; font: 600 0.66em/1.5 var(--sans); letter-spacing: 0.24em; text-transform: uppercase; color: #6b756e; }
 .toc a { display: flex; align-items: baseline; gap: 0.5em; padding: 0.22em 0; }
 .toc a::after { content: ''; order: 1; flex: 1; border-bottom: 1px dotted #9aa39b; transform: translateY(-0.25em); }
-.toc a span:last-child { order: 2; font-variant-numeric: oldstyle-nums tabular-nums; color: #5a655e; }
+.toc a span:last-child { order: 2; font-variant-numeric: lining-nums tabular-nums; font: 0.8em var(--sans); color: #5a655e; }
 
 @media print {
   html, body { background: #fff !important; }
   .noprint, .topbar, .tabbar, .toasts { display: none !important; }
   .shell { padding: 0 !important; }
-  .sheet-paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0 !important; width: auto !important; max-width: none !important; container-type: normal; }
-  .doc { font-size: var(--print-size, 11pt); hyphens: auto; }
-  .doc-photo { margin-top: 1.1em; }
-  .doc-photo img { max-height: 2.25in; }
-  .doc-body { margin-top: 1.3em; }
+  .sheet-paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0 !important; width: auto !important; max-width: none !important; min-height: 0 !important; container-type: normal; overflow: visible; background: none; }
+  .doc { --doc-size: var(--print-size, 11pt); }
   .page-break { break-before: page; }
-  /* Grids fragment badly across pages; floats flow cleanly. */
-  .doc-body { display: block; }
-  .doc-body::after { content: ''; display: block; clear: both; }
-  .doc-ing { float: left; width: 33%; }
-  .doc-method { margin-left: 38%; }
-  .doc.card .doc-ing { float: none; width: auto; margin-bottom: 1em; }
-  .doc.card .doc-method { margin-left: 0; }
-  .doc-step, .doc-ing li { break-inside: avoid; }
-  .doc h2 { break-after: avoid; }
-  .cover { aspect-ratio: auto; height: 100vh; border-radius: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .doc.modern .doc-ing, .doc.modern .doc-facts div, .doc.modern .doc-step .n { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .doc-step, .doc-ing li, .doc-notes { break-inside: avoid; }
+  /* A photograph that faces its recipe takes a page of its own, to the edges of the paper when the size is known. */
+  .doc.facing .doc-plate { break-after: page; height: 96vh; }
+  .printing .doc.facing .doc-plate { page: plate; width: var(--page-w); height: var(--page-h); }
+  .doc.facing .doc-plate img { height: 100%; aspect-ratio: auto; }
+  .cover { aspect-ratio: auto; height: 100vh; border-radius: 0; box-shadow: none; }
   a { color: inherit; }
 }
