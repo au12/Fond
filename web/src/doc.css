@@ -130,8 +130,8 @@
 .sheet-paper { container-type: inline-size; background: #fff; color: #1c231f; border-radius: 4px; box-shadow: var(--shadow-lg); padding: clamp(22px, 6.5%, 64px); }
 
 /* Cookbook covers are bound in old leather. From the bottom up: the dye, a fine shallow grain, a layer of wear
-   (uneven dye, rubbed patches, scratches) that each book shows a different part of, then edges rubbed pale,
-   corners darkened by hands, and a hinge by the spine. The lettering is stamped in worn gilt. */
+   (faded dye, rubbed patches, scratches) that each book shows a different part of, then edges and corners
+   rubbed pale and a hinge by the spine. Worn, not stained. The lettering is stamped in worn gilt. */
 .cover {
   --c: #24362b; --c-ink: #d8c592; --wear: 1; --rub: rgb(226 204 166 / 0.2); --wx: 0%; --wy: 0%;
   position: relative; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.5em;
@@ -145,7 +145,7 @@
     linear-gradient(to top, var(--rub), transparent 1.8%),
     radial-gradient(34% 26% at 100% 0, var(--rub), transparent 70%),
     radial-gradient(34% 26% at 100% 100%, var(--rub), transparent 70%),
-    radial-gradient(130% 100% at 48% 42%, transparent 38%, rgb(12 8 4 / 0.42) 100%),
+    radial-gradient(130% 100% at 48% 42%, transparent 46%, rgb(12 8 4 / 0.24) 100%),
     url('./assets/leather.webp');
   background-size: auto, auto, auto, auto, auto, auto, auto, 40% auto;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04), inset 0 -0.2em 0.45em -0.2em rgb(0 0 0 / 0.4);
@@ -159,8 +159,8 @@
 .cover i { font-size: 7cqw; line-height: 1.3; opacity: 0.8; text-wrap: balance; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.4); }
 .cover svg { width: 14cqw; height: 14cqw; margin-top: 5cqw; opacity: 0.82; filter: drop-shadow(0 -1px 0 rgb(0 0 0 / 0.4)); }
 .cover.bay { --c: #24362b; } .cover.tomato { --c: #5c2620; } .cover.ocean { --c: #1d3441; } .cover.plum { --c: #3a2637; } .cover.charcoal { --c: #1f2122; }
-.cover.butter { --c: #a98740; --c-ink: #2c2210; --wear: 0.72; --rub: rgb(244 228 190 / 0.3); }
-.cover.paper { --c: #c8ba9b; --c-ink: #33291a; --wear: 0.62; --rub: rgb(250 242 222 / 0.34); }
+.cover.butter { --c: #a98740; --c-ink: #2c2210; --rub: rgb(244 228 190 / 0.3); }
+.cover.paper { --c: #c8ba9b; --c-ink: #33291a; --rub: rgb(250 242 222 / 0.34); }
 .cover.butter b, .cover.butter i, .cover.paper b, .cover.paper i { text-shadow: 0 1px 0 rgb(255 255 255 / 0.28); }
 
 .toc { font-family: var(--serif); }

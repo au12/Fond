@@ -4,7 +4,7 @@
     python3 scripts/leather.py
 
     web/src/assets/leather.webp   a seamless tile of fine, shallow grain
-    web/src/assets/patina.webp    one cover's worth of wear: mottled dye, rubbed patches and scratches
+    web/src/assets/patina.webp    one cover's worth of wear: faded dye, rubbed patches and scratches
 
 Both are a dark or a pale colour with varying alpha, so they sit on any cover
 colour without blend modes. Needs numpy and Pillow.
@@ -82,10 +82,11 @@ Image.fromarray(rgba(shade, (22, 13, 8), (255, 243, 222), 0.34, 0.16), 'RGBA').s
 W, H = 540, 720
 S = (H, W)
 
-# Dye that took unevenly and darkened with handling; paler where it has dried out.
-mottle = noise(S, (((3, 2), 1.0), ((6, 5), 0.8), ((13, 10), 0.55), ((28, 21), 0.35), ((60, 45), 0.2)))
-dark = 0.42 * np.clip(mottle, 0, 1) ** 1.3 + 0.16 * step(0.1, 0.9, noise(S, (((5, 4), 1.0), ((11, 8), 0.6), ((24, 18), 0.3))))
-pale = 0.24 * np.clip(-mottle - 0.1, 0, 1) ** 1.2
+# Dye that has faded unevenly with light and years, and deepened a little where hands have held it.
+# Wear lightens; nothing here is a stain.
+mottle = noise(S, (((3, 2), 1.0), ((6, 5), 0.7), ((13, 10), 0.35), ((28, 21), 0.12)))
+dark = 0.13 * np.clip(mottle, 0, 1) ** 1.5
+pale = 0.17 * np.clip(0.1 - mottle, 0, 1) ** 1.3
 
 # Rubbed patches: the surface abraded pale, faintly along one direction.
 streaks = Image.fromarray(((noise((900, 900), (((300, 90), 1.0), ((600, 220), 0.8), ((900, 450), 0.5))) * 0.5 + 0.5) * 255).astype(np.uint8))
@@ -94,11 +95,10 @@ for angle, lo in ((24, 0.25), (-58, 0.42)):
     grain = np.asarray(streaks.rotate(angle, Image.BICUBIC).crop((180, 90, 180 + W, 90 + H)), np.float32) / 255
     pale += 0.15 * zone * step(0.45, 0.9, grain)
 
-# Scratches and nicks, mostly pale, a few cut dark.
+# Fine scratches and nicks, where the surface has been caught and shows paler.
 marks = Image.new('L', (W * 2, H * 2), 0)
-cuts = Image.new('L', (W * 2, H * 2), 0)
-for layer, count, reach in ((marks, 170, 80), (marks, 16, 380), (cuts, 18, 120)):
-    pen = ImageDraw.Draw(layer)
+for count, reach in ((170, 80), (16, 380)):
+    pen = ImageDraw.Draw(marks)
     for _ in range(count):
         x, y, a = rng.random() * W * 2, rng.random() * H * 2, rng.random() * np.pi
         n = rng.random() ** 2 * reach + 8
@@ -106,12 +106,11 @@ for layer, count, reach in ((marks, 170, 80), (marks, 16, 380), (cuts, 18, 120))
         pts = [(x + np.cos(a) * n * t + np.sin(a) * bend * np.sin(t * np.pi), y + np.sin(a) * n * t - np.cos(a) * bend * np.sin(t * np.pi)) for t in np.linspace(0, 1, 9)]
         pen.line(pts, fill=int(70 + rng.random() * 150), width=1 if rng.random() < 0.8 else 2)
 small = lambda im: np.asarray(im.filter(ImageFilter.GaussianBlur(0.9)).resize((W, H), Image.LANCZOS), np.float32) / 255
-pale += 0.42 * small(marks)
-dark += 0.4 * small(cuts)
+pale += 0.38 * small(marks)
 
-# The stain runs from warm umber to a cold near-black, the wear from tan to grey.
+# The deepening is a warm brown; the wear runs from tan to grey.
 warm = (noise(S, (((4, 3), 1.0), ((9, 7), 0.5))) * 0.5 + 0.5)[..., None]
-stain = (62, 32, 12) * warm + (20, 17, 16) * (1 - warm)
+stain = np.broadcast_to(np.array((46, 27, 14), np.float32), S + (3,))
 worn = (214, 184, 140) * warm + (226, 222, 212) * (1 - warm)
 signed = pale - dark
 out = np.zeros(S + (4,), np.uint8)
