@@ -129,38 +129,37 @@
 /* ------------------------------------------------------------ paper preview & print */
 .sheet-paper { container-type: inline-size; background: #fff; color: #1c231f; border-radius: 4px; box-shadow: var(--shadow-lg); padding: clamp(22px, 6.5%, 64px); }
 
-/* Cookbook covers are bound in old leather. From the bottom up: the dye, a fine shallow grain, a layer of wear
-   (faded dye, rubbed patches, scratches) that each book shows a different part of, then edges and corners
-   rubbed pale and a hinge by the spine. Worn, not stained. The lettering is stamped in worn gilt. */
+/* Cookbook covers are bound in leather. The hide is drawn by the server, a different one for every book, and
+   arrives as --hide; until it does the cover shows its plain colour. Over the hide lie the things that make
+   it a book and not a swatch: a hinge by the spine, edges a shade lighter where the leather turns over the
+   boards, a little shade toward the corners, and lettering stamped in gilt. */
 .cover {
-  --c: #24362b; --c-ink: #d8c592; --wear: 1; --rub: rgb(226 204 166 / 0.2); --wx: 0%; --wy: 0%;
+  --c: #24362b; --c-ink: #d8c592; --rub: rgb(232 214 180 / 0.1);
   position: relative; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.5em;
   aspect-ratio: 3 / 4; padding: 12%; border-radius: 0.5em 1.1em 1.1em 0.5em; color: var(--c-ink);
   font-family: var(--serif); container-type: inline-size; overflow: hidden; isolation: isolate;
   background-color: var(--c);
   background-image:
     linear-gradient(90deg, rgb(0 0 0 / 0.3) 0, rgb(255 255 255 / 0.05) 3.4%, rgb(0 0 0 / 0.26) 6.6%, rgb(255 255 255 / 0.04) 8.8%, transparent 12.5%),
-    linear-gradient(to left, var(--rub), transparent 2.6%),
-    linear-gradient(to bottom, var(--rub), transparent 1.8%),
-    linear-gradient(to top, var(--rub), transparent 1.8%),
-    radial-gradient(34% 26% at 100% 0, var(--rub), transparent 70%),
-    radial-gradient(34% 26% at 100% 100%, var(--rub), transparent 70%),
-    radial-gradient(130% 100% at 48% 42%, transparent 46%, rgb(12 8 4 / 0.24) 100%),
-    url('./assets/leather.webp');
-  background-size: auto, auto, auto, auto, auto, auto, auto, 40% auto;
+    linear-gradient(to left, var(--rub), transparent 2.2%),
+    linear-gradient(to bottom, var(--rub), transparent 1.6%),
+    linear-gradient(to top, var(--rub), transparent 1.6%),
+    radial-gradient(130% 100% at 48% 42%, transparent 52%, rgb(12 8 4 / 0.2) 100%),
+    var(--hide, none);
+  background-size: auto, auto, auto, auto, auto, cover;
+  background-position: center;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04), inset 0 -0.2em 0.45em -0.2em rgb(0 0 0 / 0.4);
   print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.cover::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: var(--wear); background: url('./assets/patina.webp') var(--wx) var(--wy) / 155% 155% no-repeat; }
 /* A blind-stamped frame: a groove with a faint gilt line inside it. */
 .cover::before { content: ''; position: absolute; inset: 6% 6% 6% 13%; border: 1px solid rgb(0 0 0 / 0.34); border-radius: 0.2em; pointer-events: none; box-shadow: 0 1px 0 rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(0 0 0 / 0.14), inset 0 0 0 0.55cqw transparent, inset 0 0 0 calc(0.55cqw + 1px) color-mix(in srgb, var(--c-ink) 34%, transparent); }
 .cover > * { position: relative; left: 3.5%; }
 .cover b { font: 600 15.5cqw/1.04 var(--serif); letter-spacing: -0.012em; text-wrap: balance; opacity: 0.94; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.45), 0 1px 0 rgb(255 255 255 / 0.1); }
 .cover i { font-size: 7cqw; line-height: 1.3; opacity: 0.8; text-wrap: balance; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.4); }
 .cover svg { width: 14cqw; height: 14cqw; margin-top: 5cqw; opacity: 0.82; filter: drop-shadow(0 -1px 0 rgb(0 0 0 / 0.4)); }
-.cover.bay { --c: #24362b; } .cover.tomato { --c: #5c2620; } .cover.ocean { --c: #1d3441; } .cover.plum { --c: #3a2637; } .cover.charcoal { --c: #1f2122; }
-.cover.butter { --c: #a98740; --c-ink: #2c2210; --rub: rgb(244 228 190 / 0.3); }
-.cover.paper { --c: #c8ba9b; --c-ink: #33291a; --rub: rgb(250 242 222 / 0.34); }
+.cover.bay { --c: #2a3f30; } .cover.tomato { --c: #62281f; } .cover.chestnut { --c: #6a3b1c; } .cover.ocean { --c: #223a4b; } .cover.plum { --c: #44283b; } .cover.charcoal { --c: #2a2b2c; }
+.cover.butter { --c: #ad8840; --c-ink: #2c2210; --rub: rgb(250 236 200 / 0.16); }
+.cover.paper { --c: #c6b796; --c-ink: #33291a; --rub: rgb(255 248 230 / 0.2); }
 .cover.butter b, .cover.butter i, .cover.paper b, .cover.paper i { text-shadow: 0 1px 0 rgb(255 255 255 / 0.28); }
 
 .toc { font-family: var(--serif); }

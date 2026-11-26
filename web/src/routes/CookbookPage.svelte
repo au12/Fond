@@ -6,8 +6,9 @@
   import ShareSheet from '../components/ShareSheet.svelte';
   import Sheet from '../components/Sheet.svelte';
   import { del, get, put } from '../lib/api';
+  import { COVER_COLORS, newLeather } from '../lib/leather';
   import { app, go, loadCookbooks, oops, toast } from '../lib/state.svelte';
-  import { ArrowDown, ArrowLeft, ArrowUp, Check, Pencil, Plus, Printer, Search, Share, Trash, X } from '../lib/icons';
+  import { ArrowDown, ArrowLeft, ArrowUp, Check, Pencil, Plus, Printer, RefreshCw, Search, Share, Trash, Undo, X } from '../lib/icons';
   import type { Card, Cookbook } from '../lib/types';
 
   let { id }: { id: number } = $props();
@@ -18,7 +19,8 @@
   let sharing = $state(false);
   let q = $state('');
   let chaptersText = $state('');
-  const colors = ['bay', 'tomato', 'butter', 'ocean', 'plum', 'charcoal', 'paper'];
+  // The hides tried while the details are open, so a good one passed over can be had back.
+  let passed = $state<number[]>([]);
 
   const load = () => get<Cookbook>(`/cookbooks/${id}`).then((b) => { b.shareToken ??= ''; book = b; }).catch(oops);
   load();
@@ -75,7 +77,16 @@
   }
   function openEdit() {
     chaptersText = book!.chapters.join('\n');
+    passed = [];
     editing = true;
+  }
+  function newHide() {
+    passed.push(book!.leather);
+    book!.leather = newLeather();
+  }
+  function lastHide() {
+    const seed = passed.pop();
+    if (seed) book!.leather = seed;
   }
   async function saveDetails(e: SubmitEvent) {
     e.preventDefault();
@@ -95,7 +106,7 @@
   <div class="page">
     <a class="btn quiet sm" href="/books" style="margin:0 0 10px -10px"><ArrowLeft />Cookbooks</a>
     <header class="head">
-      <div class="cov"><Cover title={book.title} subtitle={book.subtitle} color={book.color} seed={book.id} /></div>
+      <div class="cov"><Cover title={book.title} subtitle={book.subtitle} color={book.color} leather={book.leather} /></div>
       <div class="stack" style:gap="10px">
         <h1 class="page-title">{book.title}</h1>
         {#if book.subtitle}<p class="serif sub">{book.subtitle}</p>{/if}
@@ -164,7 +175,8 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={editing} title="Cookbook details">
+  <!-- Closing without saving puts the book back as it was saved, cover included. -->
+  <Sheet bind:open={editing} title="Cookbook details" onclose={load}>
     <form class="stack" onsubmit={saveDetails}>
       <label class="field"><span>Title</span><input class="input" bind:value={book.title} required /></label>
       <label class="field"><span>Subtitle</span><input class="input" bind:value={book.subtitle} /></label>
@@ -172,7 +184,17 @@
       <label class="field"><span>Chapters</span><textarea class="input" rows="4" bind:value={chaptersText} placeholder={'Starters\nMains\nDesserts'}></textarea><span class="hint">One per line, in reading order.</span></label>
       <div class="field">
         <span>Cover</span>
-        <div class="row wrap">{#each colors as c}<button type="button" class={`swatch cover ${c}`} class:on={book.color === c} onclick={() => (book!.color = c)} aria-label={c}></button>{/each}</div>
+        <div class="binding">
+          <div class="try"><Cover title={book.title || 'Title'} subtitle={book.subtitle} color={book.color} leather={book.leather} /></div>
+          <div class="stack" style:gap="10px">
+            <div class="row wrap" style:gap="8px">{#each COVER_COLORS as c}<button type="button" class={`swatch cover ${c}`} class:on={book.color === c} onclick={() => (book!.color = c)} aria-label={c} aria-pressed={book.color === c}></button>{/each}</div>
+            <div class="row wrap">
+              <button type="button" class="btn sm" onclick={newHide}><RefreshCw />New leather</button>
+              {#if passed.length}<button type="button" class="btn sm quiet" onclick={lastHide}><Undo />Previous</button>{/if}
+            </div>
+            <span class="hint">Each press deals a different hide. The cover only changes when you save.</span>
+          </div>
+        </div>
       </div>
       <div class="field">
         <span>Page style when shared or printed</span>
@@ -189,6 +211,9 @@
   .head { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: clamp(20px, 4vw, 44px); align-items: center; margin-bottom: 36px; }
   .cov :global(.cover) { box-shadow: inset 0.7em 0 0.9em -0.6em rgb(0 0 0 / 0.45), 0 14px 34px rgb(20 30 25 / 0.22); }
   .sub { font-style: italic; font-size: 1.2rem; color: var(--ink-2); }
+  .binding { display: flex; gap: 16px; align-items: center; }
+  .try { width: 104px; flex: none; }
+  .try :global(.cover) { box-shadow: inset 0.7em 0 0.9em -0.6em rgb(0 0 0 / 0.45), 0 6px 16px rgb(20 30 25 / 0.2); }
   .chapter { margin-bottom: 40px; }
   .chapter h2 { font-size: 1.6rem; font-weight: 600; font-style: italic; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
   .rows li, .pick { display: flex; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }

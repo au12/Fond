@@ -66,6 +66,8 @@ type Server struct {
 	cop     *http.CrossOriginProtection
 	jobs    sync.Map
 	clips   sync.Map
+	hides   sync.Map      // one lock per cover being drawn
+	easel   chan struct{} // room to draw two covers at a time
 	mux     *http.ServeMux
 }
 
@@ -79,9 +81,10 @@ func New(cfg Config, store *Store, web fs.FS) (*Server, error) {
 		assets:  map[string]*asset{},
 		limit:   newLimiter(),
 		cop:     http.NewCrossOriginProtection(),
+		easel:   make(chan struct{}, 2),
 		mux:     http.NewServeMux(),
 	}
-	for _, d := range []string{"images", "import", "tmp"} {
+	for _, d := range []string{"images", "import", "tmp", "leather"} {
 		if err := os.MkdirAll(filepath.Join(cfg.DataDir, d), 0o755); err != nil {
 			return nil, fmt.Errorf("data directory is not writable: %w", err)
 		}
@@ -125,6 +128,7 @@ func New(cfg Config, store *Store, web fs.FS) (*Server, error) {
 	}
 	s.routes()
 	go s.janitor()
+	go s.drawMissingLeather()
 	return s, nil
 }
 
@@ -132,6 +136,7 @@ func (s *Server) janitor() {
 	for range time.Tick(time.Hour) {
 		s.store.Exec(`DELETE FROM sessions WHERE expires_at<?`, now())
 		s.limit.prune()
+		s.pruneLeather()
 		entries, _ := os.ReadDir(filepath.Join(s.cfg.DataDir, "tmp"))
 		for _, e := range entries {
 			if info, err := e.Info(); err == nil && time.Since(info.ModTime()) > 6*time.Hour {

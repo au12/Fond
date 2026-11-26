@@ -40,6 +40,8 @@ export interface Card {
 
 export interface Cookbook {
   id: number; title: string; subtitle: string; description: string; color: string; style: string; chapters: string[];
+  /** The seed the cover's leather is drawn from. It stays the same until someone picks another. */
+  leather: number;
   shareToken?: string; count: number; covers: string[]; entries?: { recipeId: number; chapter: string }[];
 }
 

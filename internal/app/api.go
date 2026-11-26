@@ -17,6 +17,7 @@ func (s *Server) routes() {
 	m := s.mux
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	m.HandleFunc("GET /img/{name}", s.handleImage)
+	m.HandleFunc("GET /leather/{name}", s.handleLeather)
 	m.HandleFunc("GET /s/{token}", s.sharedRecipePage)
 	m.HandleFunc("GET /c/{token}", s.sharedCookbookPage)
 	m.HandleFunc("POST /share", s.receiveClip)

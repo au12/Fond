@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS cookbooks (
   style TEXT NOT NULL DEFAULT 'classic',
   chapters TEXT NOT NULL DEFAULT '[]',
   share_token TEXT UNIQUE,
+  leather INTEGER NOT NULL DEFAULT 0,
   position INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -174,6 +175,15 @@ func (s *Store) migrate() error {
 		if _, err := s.db.Exec(`ALTER TABLE recipes ADD COLUMN version INTEGER NOT NULL DEFAULT 1`); err != nil {
 			return err
 		}
+	}
+	// Every cookbook is bound in a hide of its own, drawn from a seed. Books from before that get one now.
+	if !s.hasColumn("cookbooks", "leather") {
+		if _, err := s.db.Exec(`ALTER TABLE cookbooks ADD COLUMN leather INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	if _, err := s.db.Exec(`UPDATE cookbooks SET leather = (random() & 4294967294) + 1 WHERE leather = 0`); err != nil {
+		return err
 	}
 	// Every recipe has a history, starting with the recipe as it stands.
 	_, err := s.db.Exec(`INSERT INTO recipe_versions (recipe_id, version, title, yield, servings, ingredients, steps, note, user_id, user_name, created_at)
@@ -646,19 +656,22 @@ func (s *Store) RetagAll(from, to string) (int, error) {
 // ------------------------------------------------------------------ cookbooks
 
 type Cookbook struct {
-	ID          int64          `json:"id"`
-	Title       string         `json:"title"`
-	Subtitle    string         `json:"subtitle"`
-	Description string         `json:"description"`
-	Color       string         `json:"color"`
-	Style       string         `json:"style"`
-	Chapters    []string       `json:"chapters"`
-	ShareToken  string         `json:"shareToken,omitempty"`
-	Count       int            `json:"count"`
-	Covers      []string       `json:"covers"`
-	Entries     []CookbookItem `json:"entries,omitempty"`
-	Created     int64          `json:"createdAt"`
-	Updated     int64          `json:"updatedAt"`
+	ID          int64  `json:"id"`
+	Title       string `json:"title"`
+	Subtitle    string `json:"subtitle"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	// Leather is the seed the cover's hide is drawn from. It is set once, when the book is made, and
+	// changes only when someone asks for a new hide.
+	Leather    uint32         `json:"leather"`
+	Style      string         `json:"style"`
+	Chapters   []string       `json:"chapters"`
+	ShareToken string         `json:"shareToken,omitempty"`
+	Count      int            `json:"count"`
+	Covers     []string       `json:"covers"`
+	Entries    []CookbookItem `json:"entries,omitempty"`
+	Created    int64          `json:"createdAt"`
+	Updated    int64          `json:"updatedAt"`
 }
 
 type CookbookItem struct {
@@ -666,12 +679,12 @@ type CookbookItem struct {
 	Chapter  string `json:"chapter"`
 }
 
-const cookbookCols = `id, title, subtitle, description, color, style, chapters, COALESCE(share_token,''), created_at, updated_at`
+const cookbookCols = `id, title, subtitle, description, color, leather, style, chapters, COALESCE(share_token,''), created_at, updated_at`
 
 func (s *Store) scanCookbook(row interface{ Scan(...any) error }) (*Cookbook, error) {
 	c := &Cookbook{}
 	var chapters string
-	if err := row.Scan(&c.ID, &c.Title, &c.Subtitle, &c.Description, &c.Color, &c.Style, &chapters, &c.ShareToken, &c.Created, &c.Updated); err != nil {
+	if err := row.Scan(&c.ID, &c.Title, &c.Subtitle, &c.Description, &c.Color, &c.Leather, &c.Style, &chapters, &c.ShareToken, &c.Created, &c.Updated); err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(chapters), &c.Chapters)
@@ -770,15 +783,19 @@ func (s *Store) SaveCookbook(c *Cookbook, entries []CookbookItem) error {
 	defer tx.Rollback()
 	t := now()
 	if c.ID == 0 {
-		res, err := tx.Exec(`INSERT INTO cookbooks (title, subtitle, description, color, style, chapters, position, created_at, updated_at)
-			VALUES (?,?,?,?,?,?,(SELECT COALESCE(MAX(position),0)+1 FROM cookbooks),?,?)`, c.Title, c.Subtitle, c.Description, c.Color, c.Style, js(c.Chapters), t, t)
+		if c.Leather == 0 {
+			c.Leather = newLeather()
+		}
+		res, err := tx.Exec(`INSERT INTO cookbooks (title, subtitle, description, color, leather, style, chapters, position, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,(SELECT COALESCE(MAX(position),0)+1 FROM cookbooks),?,?)`, c.Title, c.Subtitle, c.Description, c.Color, c.Leather, c.Style, js(c.Chapters), t, t)
 		if err != nil {
 			return err
 		}
 		c.ID, _ = res.LastInsertId()
 		c.Created = t
-	} else if _, err := tx.Exec(`UPDATE cookbooks SET title=?, subtitle=?, description=?, color=?, style=?, chapters=?, updated_at=? WHERE id=?`,
-		c.Title, c.Subtitle, c.Description, c.Color, c.Style, js(c.Chapters), t, c.ID); err != nil {
+		// A save that names no hide keeps the one the book has: the cover never changes on its own.
+	} else if _, err := tx.Exec(`UPDATE cookbooks SET title=?, subtitle=?, description=?, color=?, leather=CASE WHEN ?=0 THEN leather ELSE ? END, style=?, chapters=?, updated_at=? WHERE id=?`,
+		c.Title, c.Subtitle, c.Description, c.Color, c.Leather, c.Leather, c.Style, js(c.Chapters), t, c.ID); err != nil {
 		return err
 	}
 	c.Updated = t

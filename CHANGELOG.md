@@ -5,7 +5,13 @@
 - **Cookbook pages are re-typeset** after a classic cookbook spread: the chapter as a running head, the title in letterspaced capitals, a justified headnote over a hairline, the yield and times above a narrow sans-serif ingredient column, the method beside it with small hanging step numbers, the notes in a tinted box at the foot of the page and the recipe's number beneath. Modern and Compact share the new structure.
 - **A photograph faces its recipe.** In a shared cookbook each recipe is a spread, photo on the left; on a phone the photo sits above the recipe. Printed, the photo takes a page of its own, to the edges of the paper.
 - **A printed recipe keeps to one sheet when it can.** The photo and the whole ingredient list stay on the first page. The print preview is now a scale model of the sheet: it sets the recipe at up to five tightnesses, uses the roomiest that fits one page, never goes below about 10 pt, and says how many pages will print.
-- **Cookbook covers are bound in old leather**: a fine, shallow grain, dye faded unevenly, rubbed patches and fine scratches, edges and corners worn pale, a hinge by the spine and lettering stamped in worn gilt. Each book shows its own wear. The seven cover colours are deeper and more muted.
+- **Every cookbook is bound in a leather of its own.** The hide is drawn from a random seed when the book is made: its dye within the cover colour, how unevenly the dye took, where the leather has creased pale, and the grain. No two are alike. The look is new pull-up leather, distressed in colour and lightly creased, with no scratches and no stains.
+- **The finish is drawn too**: soft matte for about 65 books in 100, satin for 25, slightly shiny for 10.
+- **A cover stays as it is once saved.** **New leather** in the cookbook's details deals another hide, **Previous** goes back to the one before, and nothing changes until you save. The same button is there when making a book.
+- Cookbooks you already have are each dealt a hide the first time this version starts, and keep it.
+- A new cover colour, **chestnut**, for the browns leather is known for. The seven others are deeper and more muted.
+- Covers have a hinge by the spine and lettering stamped in gilt.
+- New API: cookbooks carry `leather` (the seed); `GET /leather/{seed}-{colour}-{s|l}.jpg` serves the hide. Drawn hides are kept in `leather/` in the data folder.
 - Fixed: printed notes could jump to a second page with room to spare; the Compact style drew a stray outline.
 
 ## 2.0.0

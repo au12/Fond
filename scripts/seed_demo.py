@@ -132,13 +132,20 @@ for r in reversed(R):
         call("POST", f"/recipes/{rec['id']}/cooked", {})
     print("added", r["title"])
 
-book = lambda title, sub, color, style, chapters, entries, desc="": call("POST", "/cookbooks", {"title": title, "subtitle": sub, "color": color, "style": style, "chapters": chapters, "description": desc,
-                                                                                                    "entries": [{"recipeId": ids[t], "chapter": c} for t, c in entries]})
-book("The Bread Book", "Loaves worth the wait", "bay", "classic", ["Sourdough", "Yeasted"], [("Country Sourdough Loaf", "Sourdough"), ("Seeded Rye Bread", "Yeasted"), ("Margherita Pizza", "Yeasted")],
+# Each demo book names its leather, so the shelf in the screenshots is the same every time.
+book = lambda title, sub, color, leather, style="classic", chapters=(), entries=(), desc="": call("POST", "/cookbooks", {
+    "title": title, "subtitle": sub, "color": color, "leather": leather, "style": style, "chapters": list(chapters), "description": desc,
+    "entries": [{"recipeId": ids[t], "chapter": c} for t, c in entries]})
+book("The Bread Book", "Loaves worth the wait", "bay", 4223097643, "classic", ["Sourdough", "Yeasted"],
+     [("Country Sourdough Loaf", "Sourdough"), ("Seeded Rye Bread", "Yeasted"), ("Margherita Pizza", "Yeasted")],
      "Everything here is measured by weight. Turn on baker's percentages to resize any loaf.")
-book("Weeknight Dinners", "On the table in under an hour", "tomato", "modern", ["Pasta", "Mains"],
+book("Weeknight Dinners", "On the table in under an hour", "tomato", 2172369059, "modern", ["Pasta", "Mains"],
      [("Garlic Shrimp Spaghetti", "Pasta"), ("Mushroom Tagliatelle", "Pasta"), ("Farfalle with Pesto and Tomatoes", "Pasta"), ("Butter Chicken", "Mains"), ("Smash Burgers", "Mains"), ("Red Coconut Curry Soup", "Mains")])
-book("Sweet Things", "", "butter", "classic", [], [("Brown Butter Chocolate Chip Cookies", ""), ("Fudgy Brownies", ""), ("Raspberry Layer Cake", "")])
-book("Sunday Brunch", "Slow mornings", "ocean", "classic", [], [("Buttermilk Pancakes", ""), ("Brioche French Toast", "")])
+book("Sweet Things", "", "butter", 1970070915, entries=[("Brown Butter Chocolate Chip Cookies", ""), ("Fudgy Brownies", ""), ("Raspberry Layer Cake", "")])
+book("Sunday Brunch", "Slow mornings", "ocean", 2586922105, entries=[("Buttermilk Pancakes", ""), ("Brioche French Toast", "")])
+book("The Roast", "Sunday at the table", "chestnut", 1481718048, entries=[("Grilled Chicken Skewers", ""), ("Smash Burgers", "")])
+book("Preserves", "Jars for winter", "plum", 87137281, entries=[("Quick Pickled Red Onions", "")])
+book("Fire & Smoke", "Cooking outdoors", "charcoal", 528580952, entries=[("Grilled Chicken Skewers", "")])
+book("Family Recipes", "Handed down", "paper", 2976739749, entries=[("Buttermilk Pancakes", ""), ("Fudgy Brownies", "")])
 call("POST", "/shopping", {"items": [{"text": t} for t in ["2 lb chicken thighs", "1 bunch cilantro", "3/4 cup heavy cream", "1 (14.5-ounce) can crushed tomatoes", "Sourdough bread", "6 lemons", "1 dozen eggs", "Basmati rice"]]})
 print("done:", len(ids), "recipes")

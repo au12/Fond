@@ -56,7 +56,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(networkFirst(req, SHELL, url.pathname.startsWith('/s/') || url.pathname.startsWith('/c/') ? null : '/'));
   } else if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
     e.respondWith(cacheFirst(req, SHELL));
-  } else if (url.pathname.startsWith('/img/')) {
+  } else if (url.pathname.startsWith('/img/') || url.pathname.startsWith('/leather/')) {
     e.respondWith(cacheFirst(req, IMAGES, 600));
   } else if (/^\/api\/(recipes|cookbooks|me$|shopping|public|food-rules$)/.test(url.pathname) && !url.pathname.startsWith('/api/export')) {
     e.respondWith(networkFirst(req, DATA));
