@@ -245,6 +245,15 @@ select.input { appearance: none; padding-right: 36px; background-image: url("dat
 .pop { animation: pop 0.35s var(--spring); }
 .shake { animation: shake 0.35s ease; }
 
+/* A page change cross-fades the page and nothing else. The two bars are captured on their own, switch at once
+   and stay on top, so the tab bar never shows two half-selected tabs and nothing on the page slides over it. */
+.topbar { view-transition-name: topbar; }
+.tabbar { view-transition-name: tabbar; }
+::view-transition-group(topbar), ::view-transition-group(tabbar), ::view-transition-new(topbar), ::view-transition-new(tabbar) { animation: none; }
+::view-transition-old(topbar), ::view-transition-old(tabbar) { display: none; }
+/* Captured on their own they lose the blur behind them, so they turn solid for the moment of the change. */
+:active-view-transition .topbar { background: var(--paper); }
+:active-view-transition .tabbar { background: var(--surface); }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
 
 @media (prefers-reduced-motion: reduce) {

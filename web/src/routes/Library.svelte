@@ -2,18 +2,18 @@
   import RecipeTile from '../components/RecipeTile.svelte';
   import Pot from '../components/Pot.svelte';
   import { get } from '../lib/api';
-  import { app, go, openAdd, recipePath } from '../lib/state.svelte';
+  import { app, go, libraryView, openAdd, recipePath } from '../lib/state.svelte';
   import { ArrowUpDown, Dices, Heart, Plus, Search, Timer, X } from '../lib/icons';
 
   type Sort = 'new' | 'az' | 'cooked' | 'quick';
-  let q = $state('');
-  let fav = $state(false);
-  let quick = $state(false);
-  let tag = $state('');
+  let q = $state(libraryView.q);
+  let fav = $state(libraryView.fav);
+  let quick = $state(libraryView.quick);
+  let tag = $state(libraryView.tag);
   let sort = $state<Sort>((localStorage.getItem('fond:sort') as Sort) || 'new');
   let hits = $state<number[] | null>(null);
   let searchEl: HTMLInputElement;
-  let limit = $state(60);
+  let limit = $state(libraryView.limit);
 
   const tags = $derived.by(() => {
     const counts = new Map<string, number>();
@@ -65,9 +65,17 @@
   $effect(() => {
     localStorage.setItem('fond:sort', sort);
   });
+  // A new search, filter or sort starts the list over; coming back to the same one keeps it as long as it was.
+  let filters = [q, fav, quick, tag, sort].join('\n');
   $effect(() => {
-    void [q, fav, quick, tag, sort];
-    limit = 60;
+    const f = [q, fav, quick, tag, sort].join('\n');
+    if (f !== filters) {
+      filters = f;
+      limit = 60;
+    }
+  });
+  $effect(() => {
+    Object.assign(libraryView, { q, fav, quick, tag, limit });
   });
 
   function surprise() {

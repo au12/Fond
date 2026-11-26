@@ -327,7 +327,7 @@
         {#if r.tags.length}<div class="tags">{#each r.tags as t}<span class="chip">{t}</span>{/each}</div>{/if}
       </div>
       {#if r.image}
-        <div class="hero" style:view-transition-name={`photo-${r.id}`}><Photo image={r.image} color={r.imageColor} thumb={false} eager /></div>
+        <div class="hero"><Photo image={r.image} color={r.imageColor} thumb={false} eager /></div>
       {/if}
     </header>
 
