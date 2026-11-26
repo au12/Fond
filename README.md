@@ -217,7 +217,7 @@ FOND_DATA=./data go run ./cmd/fond                 # http://localhost:8080
 
 Releases are cut by changing the number in `VERSION`; the workflow then publishes the versioned image and creates the GitHub release.
 
-For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. To change what an ingredient weighs, edit `scripts/foods/foods.txt` and run `python3 scripts/foods/build.py`; see [`scripts/foods/README.md`](scripts/foods/README.md). `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots, and `scripts/leather.py` redraws the leather grain on the cookbook covers.
+For live reload, run `npm run dev` in `web/` (it proxies the API to port 8080). `go test ./...` and `npm test` run the server and parser tests. To change what an ingredient weighs, edit `scripts/foods/foods.txt` and run `python3 scripts/foods/build.py`; see [`scripts/foods/README.md`](scripts/foods/README.md). `scripts/seed_demo.py` fills a fresh instance with the demo recipes used in the screenshots, and `scripts/leather.py` redraws the leather grain and wear on the cookbook covers.
 
 The server is Go with SQLite (pure Go, FTS5 for search). The client is Svelte 5. Typefaces are Vollkorn and Figtree, icons are Lucide, all under open licenses. Demo photos in the screenshots are from Unsplash.
 

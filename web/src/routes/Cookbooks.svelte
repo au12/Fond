@@ -42,7 +42,7 @@
     <div class="shelf">
       {#each app.cookbooks as b (b.id)}
         <a class="book" href={`/books/${b.id}`}>
-          <Cover title={b.title} subtitle={b.subtitle} color={b.color} />
+          <Cover title={b.title} subtitle={b.subtitle} color={b.color} seed={b.id} />
           <span class="faint small num">{b.count} recipe{b.count === 1 ? '' : 's'}</span>
         </a>
       {/each}

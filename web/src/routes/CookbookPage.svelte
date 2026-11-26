@@ -95,7 +95,7 @@
   <div class="page">
     <a class="btn quiet sm" href="/books" style="margin:0 0 10px -10px"><ArrowLeft />Cookbooks</a>
     <header class="head">
-      <div class="cov"><Cover title={book.title} subtitle={book.subtitle} color={book.color} /></div>
+      <div class="cov"><Cover title={book.title} subtitle={book.subtitle} color={book.color} seed={book.id} /></div>
       <div class="stack" style:gap="10px">
         <h1 class="page-title">{book.title}</h1>
         {#if book.subtitle}<p class="serif sub">{book.subtitle}</p>{/if}

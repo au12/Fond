@@ -23,7 +23,7 @@
   });
 </script>
 
-<div class="sheet-paper book-cover"><Cover title={book.title} subtitle={book.subtitle} color={book.color} /></div>
+<div class="sheet-paper book-cover"><Cover title={book.title} subtitle={book.subtitle} color={book.color} seed={book.id} /></div>
 
 <div class="sheet-paper page-break">
   <div class="toc">
