@@ -157,6 +157,6 @@ func smooth(a, b, x float64) float64 {
 
 func mix(a, b, t float64) float64 { return a + (b-a)*t }
 
-// soft takes a tone to the share of the lighter or deeper colour mixed in. It rises evenly from nothing and
-// eases off as it goes, so a patch of colour has no edge to it and never arrives at a flat top.
-func soft(t float64) float64 { return 1 - math.Exp(-1.1*t) }
+// soft takes a tone to the share of the lighter or deeper colour mixed in. It begins gently, gathers a
+// little through the middle so a patch of colour has some shape, and eases off before it arrives.
+func soft(t float64) float64 { return 0.5*(1-math.Exp(-1.1*t)) + 0.5*smooth(0, 1.1, t) }

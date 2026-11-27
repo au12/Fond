@@ -18,7 +18,8 @@ import (
 //
 // LEATHER_COLORS picks the colours (comma separated), LEATHER_N how many of
 // each, LEATHER_W the width of each, LEATHER_FROM the first seed, and
-// LEATHER_KIND and LEATHER_FINISH keep only hides of that character or finish.
+// LEATHER_KIND and LEATHER_FINISH keep only hides of that character or finish,
+// and LEATHER_SCUFFED=1 only the ones with scratches.
 // LEATHER_POLISH=1 draws each hide three times, matte, satin and shiny, to compare the finishes.
 func TestSheet(t *testing.T) {
 	out := os.Getenv("LEATHER_SHEET")
@@ -47,7 +48,7 @@ func TestSheet(t *testing.T) {
 			for {
 				seed++
 				hide = New(seed, c)
-				if (kind == "" || hide.Character == kind) && (finish == "" || hide.Finish.String() == finish) {
+				if (kind == "" || hide.Character == kind) && (finish == "" || hide.Finish.String() == finish) && (os.Getenv("LEATHER_SCUFFED") == "" || hide.Scuffed) {
 					break
 				}
 			}
@@ -67,7 +68,7 @@ func TestSheet(t *testing.T) {
 			}
 			took += time.Since(start)
 			draw.Draw(sheet, image.Rect(i*(w+8), j*(h+8), i*(w+8)+w, j*(h+8)+h), im, image.Point{}, draw.Src)
-			fmt.Printf("%s %d: %s, %s\n", c, seed, hide.Character, hide.Finish)
+			fmt.Printf("%s %d: %s, %s%s\n", c, seed, hide.Character, hide.Finish, map[bool]string{true: ", scuffed"}[hide.Scuffed])
 		}
 	}
 	fmt.Printf("%v per hide at %d wide\n", took/time.Duration(n*len(colors)), w)

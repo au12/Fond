@@ -38,6 +38,33 @@ func TestFinishOdds(t *testing.T) {
 	}
 }
 
+// One hide in five is lightly scratched, whatever its finish, and the scratches change nothing else about it.
+func TestScuffOdds(t *testing.T) {
+	const n = 40000
+	var scuffed, shinyScuffed, shiny int
+	for seed := uint32(1); seed <= n; seed++ {
+		h := New(seed, "bay")
+		if h.Scuffed != (len(h.scuffs) > 0) {
+			t.Fatalf("seed %d: scuffed %v with %d scratches", seed, h.Scuffed, len(h.scuffs))
+		}
+		if h.Scuffed {
+			scuffed++
+		}
+		if h.Finish == Shiny {
+			shiny++
+			if h.Scuffed {
+				shinyScuffed++
+			}
+		}
+	}
+	if share := float64(scuffed) / n; share < 0.188 || share > 0.212 {
+		t.Errorf("%.3f of hides are scratched, want about 0.20", share)
+	}
+	if share := float64(shinyScuffed) / float64(shiny); share < 0.16 || share > 0.24 {
+		t.Errorf("%.3f of shiny hides are scratched, want about 0.20", share)
+	}
+}
+
 // Every cover colour has dyes, and an unknown colour still binds a book.
 func TestEveryColourDraws(t *testing.T) {
 	for color := range Dyes {

@@ -46,10 +46,20 @@ type web struct {
 	seed                  uint32
 }
 
+// scuff is one light scratch: a pale hairline where something was once drawn across the leather.
+type scuff struct {
+	x, y, dir, length float64 // where it starts, which way it heads and how far, in widths of the cover
+	curl              float64 // how far it turns along the way
+	width, amount     float64
+	seed              uint32
+}
+
 // Hide is one piece of leather, fully decided, not yet drawn.
 type Hide struct {
 	Finish    Finish
 	Character string
+	Scuffed   bool // one hide in five has picked up a few light scratches
+	scuffs    []scuff
 
 	base, light, dark, crease rgb
 
@@ -63,6 +73,7 @@ type Hide struct {
 	relief, kd             float64 // how deep the creases are cut, and how hard the light models them
 	sheen, sheenW, glint   float64 // a band of light lying across the cover: how much it lifts the colour, how wide it is, how much pure reflection rides on it
 	deep                   float64 // a polished surface reads a little deeper in colour
+	cloudEdge              float64 // 0: the dye drifts from tone to tone; toward 1 it gathers into patches with soft edges
 	hollow                 float64 // how much deeper the dye lies between creases than along them
 
 	sWarp, sCloud, sPatch, sFlex, sLine, sSwell, sDither uint32
@@ -97,30 +108,30 @@ func New(seed uint32, color string) *Hide {
 	case u < 0.30:
 		h.Character = "pull-up" // a bright mesh of creases over a deeper ground
 		veinA, veinAniso = [2]float64{r.in(0.55, 1), r.in(0.2, 0.7)}, [2]float64{r.in(0.45, 1), r.in(0.5, 1)}
-		meshA, hairA = r.in(0.42, 0.68), r.in(0.24, 0.42)
-		h.cloudA, h.patchA, h.flexA = r.in(0.12, 0.26), r.in(0.04, 0.12), r.in(0.16, 0.3)
+		meshA, hairA = r.in(0.52, 0.82), r.in(0.27, 0.48)
+		h.cloudA, h.patchA, h.flexA = r.in(0.18, 0.38), r.in(0.07, 0.21), r.in(0.23, 0.42)
 	case u < 0.50:
 		h.Character = "creased" // long folds running one way, mesh gathered along them
 		veinA, veinAniso = [2]float64{r.in(0.7, 1), r.in(0.2, 0.55)}, [2]float64{r.in(0.1, 0.28), r.in(0.25, 0.6)}
-		meshA, hairA = r.in(0.32, 0.58), r.in(0.2, 0.36)
-		h.cloudA, h.patchA, h.flexA = r.in(0.1, 0.24), r.in(0.04, 0.1), r.in(0.14, 0.26)
+		meshA, hairA = r.in(0.38, 0.69), r.in(0.22, 0.4)
+		h.cloudA, h.patchA, h.flexA = r.in(0.15, 0.34), r.in(0.07, 0.17), r.in(0.2, 0.36)
 	case u < 0.82:
 		h.Character = "waxed" // clouded, two-toned, nearly smooth
 		veinA, veinAniso = [2]float64{r.in(0, 0.35), r.in(0, 0.2)}, [2]float64{r.in(0.3, 1), r.in(0.4, 1)}
-		meshA, hairA = r.in(0.1, 0.3), r.in(0.16, 0.32)
-		h.cloudA, h.patchA, h.flexA = r.in(0.34, 0.58), r.in(0.08, 0.18), r.in(0.1, 0.2)
-		reach = r.in(1.0, 1.2)
+		meshA, hairA = r.in(0.12, 0.35), r.in(0.18, 0.36)
+		h.cloudA, h.patchA, h.flexA = r.in(0.44, 0.74), r.in(0.19, 0.39), r.in(0.15, 0.3)
+		reach = r.in(1.08, 1.35)
 	default:
 		h.Character = "calm" // even and quiet: a fine grain and little else
 		veinA, veinAniso = [2]float64{r.in(0, 0.25), r.in(0, 0.15)}, [2]float64{r.in(0.3, 1), r.in(0.4, 1)}
-		meshA, hairA = r.in(0.2, 0.4), r.in(0.24, 0.4)
-		h.cloudA, h.patchA, h.flexA = r.in(0.08, 0.18), r.in(0.03, 0.08), r.in(0.06, 0.14)
+		meshA, hairA = r.in(0.25, 0.48), r.in(0.27, 0.45)
+		h.cloudA, h.patchA, h.flexA = r.in(0.12, 0.25), r.in(0.055, 0.14), r.in(0.08, 0.2)
 	}
 
 	h.warpF, h.warpA = r.in(1.6, 3.2), r.in(0.025, 0.06)
-	h.cloudF, h.patchF = r.in(0.55, 1.3), r.in(2.4, 5)
+	h.cloudF, h.patchF = r.in(0.72, 1.85), r.in(3, 6.7)
 	h.flexF, h.flexBias, h.bands = r.in(1.1, 2.6), r.in(-0.15, 0.2), r.in(0, 0.6)
-	r.float() // a draw once spent on hard-edged clouds; it is still made so that a seed keeps its hide
+	h.cloudEdge = r.in(0, 0.3)
 
 	vf := r.in(3.2, 6.5)
 	for i := range h.veins {
@@ -141,7 +152,7 @@ func New(seed uint32, color string) *Hide {
 		}
 	}
 	cellsAcross := r.in(32, 62)
-	h.mesh = weave(cellsAcross, 0.0018, meshA, 0.6)
+	h.mesh = weave(cellsAcross, 0.0016, meshA, 0.6)
 	h.hair = weave(cellsAcross*r.in(2.2, 3), 0.001, hairA, 0.3)
 	h.hair.aniso *= 0.75
 
@@ -170,17 +181,17 @@ func New(seed uint32, color string) *Hide {
 	lift := r.in(0.7, 1.0) * reach
 	room := clamp(0.9-d.l, 0.04, 0.6)
 	light := lch{
-		d.l + lift*mix(0.02+0.04*room, 0.032+0.09*room, warm),
+		d.l + lift*mix(0.0225+0.045*room, 0.036+0.1*room, warm),
 		d.c*mix(r.in(1.05, 1.25), r.in(1.05, 1.22), warm) + (1-warm)*r.in(0.004, 0.014)*clamp(d.c/0.03, 0.3, 1),
 		toward(d.h, 72, mix(r.in(10, 26), r.in(3, 10), warm)),
 	}
 	crease := lch{
-		d.l + lift*mix(0.045+0.1*room, 0.055+0.15*room, warm),
+		d.l + lift*mix(0.058+0.135*room, 0.072+0.205*room, warm),
 		d.c * mix(0.9, 1.1, warm) * r.in(0.92, 1.08),
 		toward(d.h, 76, mix(r.in(8, 20), r.in(5, 14), warm)),
 	}
 	crust := lch{math.Max(r.in(0.74, 0.86), crease.l), r.in(0.07, 0.12) * (0.4 + 0.6*warm), r.in(64, 84)}
-	dark := lch{d.l - (0.5+0.5*reach)*r.in(0.024, 0.052)*(0.5+d.l), d.c * r.in(1.0, 1.12), toward(d.h, 25, r.in(0, 7))}
+	dark := lch{d.l - (0.5+0.5*reach)*r.in(0.027, 0.058)*(0.5+d.l), d.c * r.in(1.0, 1.12), toward(d.h, 25, r.in(0, 7))}
 	h.hollow = 1
 	// On a pale hide a patch of deeper colour reads as a stain, so its colour is kept nearly even.
 	if pale := smooth(0.5, 0.75, d.l); pale > 0 {
@@ -190,11 +201,90 @@ func New(seed uint32, color string) *Hide {
 		h.hollow = 1 + 1.6*pale // a pale hide shows its creases by the tone between them
 	}
 	h.light, h.dark = light.rgb(), dark.rgb()
-	h.crease = crease.blend(crust, r.in(0.1, 0.24)*(0.5+0.5*warm)).rgb()
+	h.crease = crease.blend(crust, r.in(0.15, 0.35)*(0.5+0.5*warm)).rgb()
 
 	h.sWarp, h.sCloud, h.sPatch, h.sFlex = r.seed(), r.seed(), r.seed(), r.seed()
 	h.sLine, h.sSwell, h.sDither = r.seed(), r.seed(), r.seed()
+	h.scuff(seed)
 	return h
+}
+
+// scuff gives one hide in five a few light scratches. They are drawn from numbers of their own, so that
+// whether a hide is scratched changes nothing else about it.
+func (h *Hide) scuff(seed uint32) {
+	r := &rng{s: uint64(seed)*0xd6e8feb86659fd93 + 0x2545f4914f6cdd1d}
+	if r.float() >= 0.20 {
+		return
+	}
+	h.Scuffed = true
+	// Scratches come in twos and threes: whatever made one usually made its neighbours, in much the same
+	// direction. Most are short. Now and then something with two points leaves a pair side by side.
+	for group := 2 + int(r.float()*2.6); group > 0; group-- {
+		cx, cy, dir := r.in(0.12, 0.88), r.in(0.15, 1.18), r.in(0, 2*math.Pi)
+		spread, weight := r.in(0.1, 0.26), r.in(0.6, 1)
+		for n := 3 + int(r.float()*4.5); n > 0; n-- {
+			long := r.float()
+			s := scuff{
+				x: cx + r.in(-spread, spread), y: cy + r.in(-spread, spread),
+				dir: dir + r.in(-0.3, 0.3), length: 0.05 + 0.5*math.Pow(long, 1.7), curl: r.in(-0.3, 0.3),
+				width: r.in(0.001, 0.002), amount: weight * r.in(0.5, 1), seed: r.seed(),
+			}
+			h.scuffs = append(h.scuffs, s)
+			if r.float() < 0.3 {
+				gap := r.in(0.004, 0.011)
+				s.x, s.y = s.x-gap*math.Sin(s.dir), s.y+gap*math.Cos(s.dir)
+				s.length *= r.in(0.5, 0.9)
+				s.amount *= r.in(0.5, 0.8)
+				s.seed = r.seed()
+				h.scuffs = append(h.scuffs, s)
+			}
+		}
+	}
+}
+
+// scratch draws the hide's scuffs onto a sheet of their own: at each point, how much of a scratch is there.
+func (h *Hide) scratch(w, ht int) []float32 {
+	if len(h.scuffs) == 0 {
+		return nil
+	}
+	sheet := make([]float32, w*ht)
+	for _, s := range h.scuffs {
+		sigma := math.Max(s.width*float64(w), 0.45)
+		reach := int(4*sigma) + 1
+		steps := int(s.length*float64(w)*2) + 1
+		x, y := s.x*float64(w), s.y*float64(w)
+		for i := 0; i <= steps; i++ {
+			t := float64(i) / float64(steps)
+			a := s.dir + s.curl*(t-0.5)
+			x, y = x+0.5*math.Cos(a), y+0.5*math.Sin(a)
+			// It bites quickly, trails away slowly, and skips where the point rode over the grain. A hand is
+			// never quite steady, so it wavers a little too.
+			along := t * s.length
+			amount := s.amount * smooth(0, 0.1, t) * smooth(0, 0.45, 1-t) * (0.35 + 0.65*smooth(-0.5, 0.15, gnoise(along*30, 0.5, s.seed)))
+			if amount < 0.01 {
+				continue
+			}
+			waver := 0.0016 * float64(w) * gnoise(along*55, 3.5, s.seed+1)
+			px, py := x-waver*math.Sin(a), y+waver*math.Cos(a)
+			for j := int(py) - reach; j <= int(py)+reach; j++ {
+				if j < 0 || j >= ht {
+					continue
+				}
+				for k := int(px) - reach; k <= int(px)+reach; k++ {
+					if k < 0 || k >= w {
+						continue
+					}
+					dx, dy := float64(k)+0.5-px, float64(j)+0.5-py
+					d := (dx*dx + dy*dy) / (sigma * sigma)
+					// An old scratch has softened: a fine line with a faint bloom of lifted colour either side.
+					if v := float32(amount * (0.8*math.Exp(-d) + 0.2*math.Exp(-d/6))); v > sheet[j*w+k] {
+						sheet[j*w+k] = v
+					}
+				}
+			}
+		}
+	}
+	return sheet
 }
 
 // polish sets how the surface takes the light for the hide's finish; a and b vary it within the finish.
@@ -273,7 +363,7 @@ func (h *Hide) Render(w int) *image.RGBA {
 		fWarpY: func(u, v float64) float64 { return h.warpA * fbm(u*h.warpF+31.4, v*h.warpF+7.9, 3, h.sWarp+1) },
 		fCloud: func(u, v float64) float64 {
 			wx, wy := 0.13*fbm(u*1.7+3, v*1.7, 2, h.sCloud+9), 0.13*fbm(u*1.7, v*1.7+5, 2, h.sCloud+10)
-			return fbm((u+wx)*h.cloudF, (v+wy)*h.cloudF, 2, h.sCloud)
+			return fbm((u+wx)*h.cloudF, (v+wy)*h.cloudF, 3, h.sCloud)
 		},
 		fPatch: func(u, v float64) float64 { return fbm(u*h.patchF, v*h.patchF, 2, h.sPatch) },
 		fFlex: func(u, v float64) float64 {
@@ -305,6 +395,8 @@ func (h *Hide) Render(w int) *image.RGBA {
 	facet := make([]float32, w*ht) // which way each grain of the surface happens to tilt
 	albedo := make([]float32, w*ht*3)
 
+	scuffs := h.scratch(w, ht)
+
 	// The surface: its colour and its height at every point.
 	rows(func(y0, y1 int) {
 		for y := y0; y < y1; y++ {
@@ -314,6 +406,11 @@ func (h *Hide) Render(w int) *image.RGBA {
 				qx, qy := u+g.at(fWarpX, at), v+g.at(fWarpY, at)
 
 				cl := g.at(fCloud, at) * 1.7
+				if cl > 0 {
+					cl = mix(cl, 0.8*smooth(0.05, 0.6, cl), h.cloudEdge)
+				} else {
+					cl = mix(cl, -0.8*smooth(0.05, 0.6, -cl), h.cloudEdge)
+				}
 				// 0 where the hide lies quiet, 1 where it has been flexed; a patch that has lifted in colour has been worked too.
 				worked := clamp(smooth(-0.3, 0.4, g.at(fFlex, at)+h.flexBias)+0.35*h.cloudA*math.Max(cl, 0), 0, 1)
 				run := smooth(-0.25, 0.45, g.at(fRuns, at))
@@ -346,7 +443,7 @@ func (h *Hide) Render(w int) *image.RGBA {
 					near = math.Max(near, a*math.Exp(-dist*dist/1800))
 				}
 				worked = math.Max(worked, 0.9*near)
-				glow = 0.5 * near
+				glow = 0.55 * near
 
 				// The mesh sways between junctions and trembles along the way, so no line of it runs ruler-straight.
 				n1, n2, _ := gnoiseD(u*h.mesh.freq*1.3, v*h.mesh.freq*1.3, h.sLine+5)
@@ -392,15 +489,15 @@ func (h *Hide) Render(w int) *image.RGBA {
 						fine = a * (0.6*core + 0.5*shoulder + 0.15*bloom - 0.3)
 						continue
 					}
-					creased = 1 - (1-creased)*(1-a*(0.4*core+0.3*shoulder))
-					lifted = a * (0.5*shoulder + 0.4*bloom)    // round the crease the leather passes through its lighter tone on the way
-					hollow = 0.15 * h.hollow * a * (1 - bloom) // between its creases the dye lies a little deeper
+					creased = 1 - (1-creased)*(1-a*(0.5*core+0.25*shoulder))
+					lifted = a * (0.5*shoulder + 0.4*bloom)     // round the crease the leather passes through its lighter tone on the way
+					hollow = 0.185 * h.hollow * a * (1 - bloom) // between its creases the dye lies a little deeper
 					glow = math.Max(glow, 0.5*a*shoulder)
 				}
 
 				// Uneven colour: broad clouds, smaller patches, lift where worked, and grain by grain so nothing is airbrushed.
-				tone := h.cloudA*cl + h.patchA*g.at(fPatch, at)*1.5 + h.flexA*(worked*(0.85+0.15*run)-0.5) + 0.2*glow
-				tone += (0.08+0.15*math.Abs(tone))*grainTone - hollow + 0.6*lifted
+				tone := h.cloudA*cl + h.patchA*g.at(fPatch, at)*1.5 + h.flexA*(worked*(0.72+0.28*run)-0.5) + 0.25*glow
+				tone += (0.09+0.175*math.Abs(tone))*grainTone - hollow + 0.75*lifted
 				c := h.base
 				if tone > 0 {
 					c = c.mix(h.light, soft(tone))
@@ -413,6 +510,13 @@ func (h *Hide) Render(w int) *image.RGBA {
 					c = c.mix(h.dark, -fine)
 				}
 				c = c.mix(h.crease, clamp(creased, 0, 1))
+				if scuffs != nil {
+					// A light scratch shows the way a crease does, paler, and is barely cut into the surface.
+					if s := float64(scuffs[y*w+x]); s > 0.004 {
+						c = c.mix(h.crease, 0.7*s)
+						groove += 0.35 * s
+					}
+				}
 				p := (y*w + x) * 3
 				albedo[p], albedo[p+1], albedo[p+2] = float32(c[0]), float32(c[1]), float32(c[2])
 				height[y*w+x] = float32(-0.0011*h.relief*groove + 0.01*g.at(fSwell, at))
