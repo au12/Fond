@@ -323,7 +323,7 @@ func (h *Hide) Render(w int) *image.RGBA {
 				// 0 where the hide lies quiet, 1 where it has been flexed; a patch that has lifted in colour has been worked too.
 				worked := clamp(smooth(-0.3, 0.4, g.at(fFlex, at)+h.flexBias)+0.35*h.cloudA*math.Max(cl, 0), 0, 1)
 				run := smooth(-0.25, 0.45, g.at(fRuns, at))
-				creased, fine, hollow, groove, glow := 0.0, 0.0, 0.0, 0.0, 0.0
+				creased, fine, lifted, hollow, groove, glow := 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 				// A long fold is not drawn as a line: a line across a cover reads as a scratch. It is a band of
 				// strain. Within it the colour lifts softly and the mesh gathers, and the borders that lie right
@@ -386,23 +386,27 @@ func (h *Hide) Render(w int) *image.RGBA {
 					if a < 0.01 {
 						continue
 					}
+					// A crease has no edge. The colour is palest along its line, falls away quickly at first and
+					// then slowly, and is still lifting the leather a little halfway across the cell.
 					width := wb.width * wide
-					core := 1 - smooth(0, width, e)
-					groove += wb.depth * a * core
-					halo := 1 - smooth(0, width*4, e)
+					core := math.Exp(-e * e / (width * width))
+					shoulder := math.Exp(-e / (2.6 * width))
+					bloom := math.Exp(-e / (7 * width))
+					groove += wb.depth * a * (0.6*core + 0.4*shoulder)
 					if i == 1 {
 						// The grain is texture, not creasing: its lines lift a little and the grains between them sit a little deeper.
-						fine = a * (0.9*core + 0.35*halo - 0.3)
+						fine = a * (0.6*core + 0.5*shoulder + 0.15*bloom - 0.3)
 						continue
 					}
-					creased = 1 - (1-creased)*(1-a*(0.7*core+0.3*halo))
-					hollow = 0.22 * h.hollow * a * (1 - halo) // between its creases the dye lies a little deeper
-					glow = math.Max(glow, 0.5*a*halo)
+					creased = 1 - (1-creased)*(1-a*(0.6*core+0.2*shoulder))
+					lifted = a * (0.5*shoulder + 0.4*bloom)    // round the crease the leather passes through its lighter tone on the way
+					hollow = 0.22 * h.hollow * a * (1 - bloom) // between its creases the dye lies a little deeper
+					glow = math.Max(glow, 0.5*a*shoulder)
 				}
 
 				// Uneven colour: broad clouds, smaller patches, lift where worked, and grain by grain so nothing is airbrushed.
 				tone := h.cloudA*cl + h.patchA*g.at(fPatch, at)*1.5 + h.flexA*(worked*(0.6+0.4*run)-0.5) + 0.3*glow
-				tone += (0.1+0.2*math.Abs(tone))*grainTone - hollow
+				tone += (0.1+0.2*math.Abs(tone))*grainTone - hollow + 0.9*lifted
 				c := h.base
 				if tone > 0 {
 					c = c.mix(h.light, smooth(0, 1.1, tone))
