@@ -131,6 +131,25 @@ func cells(x, y float64, seed uint32) (border float64, id1, id2 uint32) {
 	return (d2 - d1) / (2*math.Hypot(x2-x1, y2-y1) + 1e-9), id1, id2
 }
 
+// pit is how far (x, y) is from the nearest of one jittered point per unit square, squared, and a hash naming that point.
+func pit(x, y float64, seed uint32) (d2 float64, id uint32) {
+	xf, yf := math.Floor(x), math.Floor(y)
+	ix, iy := int32(xf), int32(yf)
+	fx, fy := x-xf, y-yf
+	d2 = 9
+	for j := int32(-1); j <= 1; j++ {
+		for i := int32(-1); i <= 1; i++ {
+			h := hash2(ix+i, iy+j, seed)
+			dx := float64(i) + float64(h&0xffff)/65536 - fx
+			dy := float64(j) + float64(h>>16)/65536 - fy
+			if d := dx*dx + dy*dy; d < d2 {
+				d2, id = d, h
+			}
+		}
+	}
+	return d2, id
+}
+
 // pair gives two numbers in 0..1 that belong to the border between two cells, whichever side it is seen from.
 func pair(id1, id2 uint32) (float64, float64) {
 	h := (id1 ^ id2) * 0x9e3779b1

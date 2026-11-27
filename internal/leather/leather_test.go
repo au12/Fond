@@ -65,6 +65,30 @@ func TestScuffOdds(t *testing.T) {
 	}
 }
 
+// Every grain turns up, none of them rarely, and each one draws.
+func TestGrains(t *testing.T) {
+	const n = 20000
+	got := map[string]int{}
+	first := map[string]uint32{}
+	for seed := uint32(1); seed <= n; seed++ {
+		g := New(seed, "bay").Grain
+		if got[g]++; got[g] == 1 {
+			first[g] = seed
+		}
+	}
+	for g, want := range map[string]float64{"fine": 0.28, "pebbled": 0.20, "open": 0.18, "long": 0.16, "pored": 0.18} {
+		if share := float64(got[g]) / n; share < want-0.015 || share > want+0.015 {
+			t.Errorf("%s: %.3f of hides, want about %.2f", g, share, want)
+		}
+		if im := New(first[g], "chestnut").Render(60); im.Bounds().Dx() != 60 {
+			t.Errorf("%s: drew %v", g, im.Bounds())
+		}
+	}
+	if len(got) != 5 {
+		t.Errorf("grains drawn: %v", got)
+	}
+}
+
 // Every cover colour has dyes, and an unknown colour still binds a book.
 func TestEveryColourDraws(t *testing.T) {
 	for color := range Dyes {

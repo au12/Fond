@@ -58,7 +58,8 @@ type scuff struct {
 type Hide struct {
 	Finish    Finish
 	Character string
-	Scuffed   bool // one hide in five has picked up a few light scratches
+	Grain     string // what the surface is like: fine, pebbled, open, long or pored
+	Scuffed   bool   // one hide in five has picked up a few light scratches
 	scuffs    []scuff
 
 	base, light, dark, crease rgb
@@ -74,9 +75,13 @@ type Hide struct {
 	sheen, sheenW, glint   float64 // a band of light lying across the cover: how much it lifts the colour, how wide it is, how much pure reflection rides on it
 	deep                   float64 // a polished surface reads a little deeper in colour
 	cloudEdge              float64 // 0: the dye drifts from tone to tone; toward 1 it gathers into patches with soft edges
+	cut                    float64 // how deeply this hide in particular takes its grain
+	pebble                 float64 // how far each grain stands up round, like a pebble
+	poreF, poreA           float64 // hair pores: how many across the cover, and how plainly they show
+	nap, napF              float64 // a fine tooth to the surface, as on leather that has been buffed
 	hollow                 float64 // how much deeper the dye lies between creases than along them
 
-	sWarp, sCloud, sPatch, sFlex, sLine, sSwell, sDither uint32
+	sWarp, sCloud, sPatch, sFlex, sLine, sSwell, sDither, sPore uint32
 }
 
 // FinishOf is the finish a seed draws, without deciding the rest.
@@ -205,8 +210,50 @@ func New(seed uint32, color string) *Hide {
 
 	h.sWarp, h.sCloud, h.sPatch, h.sFlex = r.seed(), r.seed(), r.seed(), r.seed()
 	h.sLine, h.sSwell, h.sDither = r.seed(), r.seed(), r.seed()
+	h.grain(seed)
 	h.scuff(seed)
 	return h
+}
+
+// scale makes a web's cells k times as many across, and keeps its lines as they were.
+func (wb *web) scale(k float64) {
+	wb.freq, wb.width, wb.bend, wb.shake = wb.freq*k, wb.width*k, wb.bend/k, wb.shake/k
+}
+
+// grain decides the surface of the hide: what kind of skin it is under the creases and the colour. Like
+// the scratches it is drawn from numbers of its own, and leaves the rest of the hide as it was.
+func (h *Hide) grain(seed uint32) {
+	r := &rng{s: uint64(seed)*0xa0761d6478bd642f + 0xe7037ed1a0b428db}
+	h.cut = r.in(0.8, 1.3)
+	h.nap, h.napF = math.Pow(r.float(), 1.6), r.in(170, 280)
+	h.sPore = r.seed()
+	switch u := r.float(); {
+	case u < 0.28:
+		h.Grain = "fine" // close and even: the mesh of creases over a hair-fine grain
+		h.hair.scale(r.in(0.9, 1.25))
+	case u < 0.48:
+		h.Grain = "pebbled"                       // every grain stands up round, with soft valleys between
+		h.hair.scale(r.in(58, 120) / h.hair.freq) // so many pebbles across the cover
+		h.hair.aniso = r.in(0.78, 1)
+		h.pebble = r.in(0.55, 1)
+		h.mesh.amount *= r.in(0.6, 0.85)
+	case u < 0.66:
+		h.Grain = "open" // a loose, shrunken grain: big cells and broad creases, cut deep
+		h.mesh.scale(r.in(0.5, 0.7))
+		h.mesh.width *= r.in(1.25, 1.6)
+		h.mesh.depth *= 1.3
+		h.hair.scale(r.in(0.55, 0.8))
+		h.cut *= 1.1
+	case u < 0.82:
+		h.Grain = "long" // drawn out one way, so the grain reads as a direction
+		h.mesh.aniso, h.hair.aniso = r.in(0.34, 0.5), r.in(0.3, 0.45)
+		h.mesh.scale(r.in(0.75, 1))
+	default:
+		h.Grain = "pored" // smooth between its creases, and pricked with hair pores
+		h.poreF, h.poreA = r.in(105, 180), r.in(0.55, 1)
+		h.hair.amount *= r.in(0.4, 0.65)
+		h.nap *= 0.5
+	}
 }
 
 // scuff gives one hide in five a few light scratches. They are drawn from numbers of their own, so that
@@ -414,7 +461,7 @@ func (h *Hide) Render(w int) *image.RGBA {
 				// 0 where the hide lies quiet, 1 where it has been flexed; a patch that has lifted in colour has been worked too.
 				worked := clamp(smooth(-0.3, 0.4, g.at(fFlex, at)+h.flexBias)+0.35*h.cloudA*math.Max(cl, 0), 0, 1)
 				run := smooth(-0.25, 0.45, g.at(fRuns, at))
-				creased, fine, lifted, hollow, groove, glow := 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+				creased, fine, lifted, hollow, groove, glow, shade := 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 // shade: how far the point lies down out of the light
 
 				// A long fold is not drawn as a line: a line across a cover reads as a scratch. It is a band of
 				// strain. Within it the colour lifts softly and the mesh gathers, and the borders that lie right
@@ -487,6 +534,15 @@ func (h *Hide) Render(w int) *image.RGBA {
 					if i == 1 {
 						// The grain is texture, not creasing: its lines lift a little and the grains between them sit a little deeper.
 						fine = a * (0.6*core + 0.5*shoulder + 0.15*bloom - 0.3)
+						if h.pebble > 0 {
+							// Pebbled: the grain is felt more than seen. Each one rises round out of a soft valley,
+							// and the colour lies a little deeper down there.
+							// The valley is as wide on a big pebble as on a small one, so a big one has a flatter top.
+							valley := 1 - smooth(0, clamp(0.0045*wb.freq, 0.2, 0.45), e)
+							groove += 1.3 * h.pebble * valley
+							fine = mix(fine, a*(0.14-0.55*valley), 0.85*h.pebble)
+							shade = 0.16 * h.pebble * valley
+						}
 						continue
 					}
 					creased = 1 - (1-creased)*(1-a*(0.5*core+0.25*shoulder))
@@ -510,6 +566,17 @@ func (h *Hide) Render(w int) *image.RGBA {
 					c = c.mix(h.dark, -fine)
 				}
 				c = c.mix(h.crease, clamp(creased, 0, 1))
+				if h.poreA > 0 {
+					// Hair pores: small pits, thick in some places and sparse in others, each a little darker than the skin round it.
+					fx, fy := (qx*h.runCos+qy*h.runSin)*h.poreF, (qy*h.runCos-qx*h.runSin)*h.poreF*0.8
+					if d, id := pit(fx, fy, h.sPore); d < 0.3 && float64(id>>8&0xffff)/65535 < 0.18+0.62*run {
+						if p := h.poreA * math.Exp(-d/(0.022+0.045*float64(id&0xff)/255)); p > 0.01 {
+							c = c.mix(h.dark, 0.6*p)
+							groove += 0.9 * p
+							shade = math.Max(shade, 0.42*p)
+						}
+					}
+				}
 				if scuffs != nil {
 					// A light scratch shows the way a crease does, paler, and is barely cut into the surface.
 					if s := float64(scuffs[y*w+x]); s > 0.004 {
@@ -517,9 +584,10 @@ func (h *Hide) Render(w int) *image.RGBA {
 						groove += 0.35 * s
 					}
 				}
+				c = c.mix(rgb{}, shade)
 				p := (y*w + x) * 3
 				albedo[p], albedo[p+1], albedo[p+2] = float32(c[0]), float32(c[1]), float32(c[2])
-				height[y*w+x] = float32(-0.0011*h.relief*groove + 0.01*g.at(fSwell, at))
+				height[y*w+x] = float32(-0.0011*h.relief*h.cut*groove + 0.01*g.at(fSwell, at) + 0.00007*h.nap*gnoise(u*h.napF, v*h.napF, h.sPore+7))
 			}
 		}
 	})
