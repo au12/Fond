@@ -60,7 +60,6 @@ type Hide struct {
 	bands, runCos, runSin  float64 // how far that working runs in bands along the hide rather than in patches
 	veins                  [2]vein
 	mesh, hair             web     // the mesh of creases, and the hair-fine grain
-	cloudEdge              float64 // 0: the dye drifts from tone to tone; 1: it sits in patches with soft edges
 	relief, kd             float64 // how deep the creases are cut, and how hard the light models them
 	sheen, sheenW, glint   float64 // a band of light lying across the cover: how much it lifts the colour, how wide it is, how much pure reflection rides on it
 	deep                   float64 // a polished surface reads a little deeper in colour
@@ -98,30 +97,30 @@ func New(seed uint32, color string) *Hide {
 	case u < 0.30:
 		h.Character = "pull-up" // a bright mesh of creases over a deeper ground
 		veinA, veinAniso = [2]float64{r.in(0.55, 1), r.in(0.2, 0.7)}, [2]float64{r.in(0.45, 1), r.in(0.5, 1)}
-		meshA, hairA = r.in(0.62, 0.95), r.in(0.3, 0.55)
-		h.cloudA, h.patchA, h.flexA = r.in(0.25, 0.5), r.in(0.1, 0.3), r.in(0.3, 0.55)
+		meshA, hairA = r.in(0.42, 0.68), r.in(0.24, 0.42)
+		h.cloudA, h.patchA, h.flexA = r.in(0.12, 0.26), r.in(0.04, 0.12), r.in(0.16, 0.3)
 	case u < 0.50:
 		h.Character = "creased" // long folds running one way, mesh gathered along them
 		veinA, veinAniso = [2]float64{r.in(0.7, 1), r.in(0.2, 0.55)}, [2]float64{r.in(0.1, 0.28), r.in(0.25, 0.6)}
-		meshA, hairA = r.in(0.45, 0.8), r.in(0.25, 0.45)
-		h.cloudA, h.patchA, h.flexA = r.in(0.2, 0.45), r.in(0.1, 0.25), r.in(0.25, 0.45)
+		meshA, hairA = r.in(0.32, 0.58), r.in(0.2, 0.36)
+		h.cloudA, h.patchA, h.flexA = r.in(0.1, 0.24), r.in(0.04, 0.1), r.in(0.14, 0.26)
 	case u < 0.82:
 		h.Character = "waxed" // clouded, two-toned, nearly smooth
 		veinA, veinAniso = [2]float64{r.in(0, 0.35), r.in(0, 0.2)}, [2]float64{r.in(0.3, 1), r.in(0.4, 1)}
-		meshA, hairA = r.in(0.15, 0.4), r.in(0.2, 0.4)
-		h.cloudA, h.patchA, h.flexA = r.in(0.55, 0.9), r.in(0.3, 0.6), r.in(0.2, 0.4)
-		reach = r.in(1.15, 1.5)
+		meshA, hairA = r.in(0.1, 0.3), r.in(0.16, 0.32)
+		h.cloudA, h.patchA, h.flexA = r.in(0.34, 0.58), r.in(0.08, 0.18), r.in(0.1, 0.2)
+		reach = r.in(1.0, 1.2)
 	default:
 		h.Character = "calm" // even and quiet: a fine grain and little else
 		veinA, veinAniso = [2]float64{r.in(0, 0.25), r.in(0, 0.15)}, [2]float64{r.in(0.3, 1), r.in(0.4, 1)}
-		meshA, hairA = r.in(0.3, 0.55), r.in(0.3, 0.5)
-		h.cloudA, h.patchA, h.flexA = r.in(0.15, 0.32), r.in(0.08, 0.2), r.in(0.1, 0.25)
+		meshA, hairA = r.in(0.2, 0.4), r.in(0.24, 0.4)
+		h.cloudA, h.patchA, h.flexA = r.in(0.08, 0.18), r.in(0.03, 0.08), r.in(0.06, 0.14)
 	}
 
 	h.warpF, h.warpA = r.in(1.6, 3.2), r.in(0.025, 0.06)
-	h.cloudF, h.patchF = r.in(0.9, 2.4), r.in(3.5, 8.5)
+	h.cloudF, h.patchF = r.in(0.55, 1.3), r.in(2.4, 5)
 	h.flexF, h.flexBias, h.bands = r.in(1.1, 2.6), r.in(-0.15, 0.2), r.in(0, 0.6)
-	h.cloudEdge = r.in(0, 0.6)
+	r.float() // a draw once spent on hard-edged clouds; it is still made so that a seed keeps its hide
 
 	vf := r.in(3.2, 6.5)
 	for i := range h.veins {
@@ -142,7 +141,7 @@ func New(seed uint32, color string) *Hide {
 		}
 	}
 	cellsAcross := r.in(32, 62)
-	h.mesh = weave(cellsAcross, 0.0014, meshA, 0.6)
+	h.mesh = weave(cellsAcross, 0.0018, meshA, 0.6)
 	h.hair = weave(cellsAcross*r.in(2.2, 3), 0.001, hairA, 0.3)
 	h.hair.aniso *= 0.75
 
@@ -171,17 +170,17 @@ func New(seed uint32, color string) *Hide {
 	lift := r.in(0.7, 1.0) * reach
 	room := clamp(0.9-d.l, 0.04, 0.6)
 	light := lch{
-		d.l + lift*mix(0.025+0.05*room, 0.04+0.11*room, warm),
+		d.l + lift*mix(0.02+0.04*room, 0.032+0.09*room, warm),
 		d.c*mix(r.in(1.05, 1.25), r.in(1.05, 1.22), warm) + (1-warm)*r.in(0.004, 0.014)*clamp(d.c/0.03, 0.3, 1),
 		toward(d.h, 72, mix(r.in(10, 26), r.in(3, 10), warm)),
 	}
 	crease := lch{
-		d.l + lift*mix(0.07+0.17*room, 0.09+0.26*room, warm),
+		d.l + lift*mix(0.045+0.1*room, 0.055+0.15*room, warm),
 		d.c * mix(0.9, 1.1, warm) * r.in(0.92, 1.08),
 		toward(d.h, 76, mix(r.in(8, 20), r.in(5, 14), warm)),
 	}
 	crust := lch{math.Max(r.in(0.74, 0.86), crease.l), r.in(0.07, 0.12) * (0.4 + 0.6*warm), r.in(64, 84)}
-	dark := lch{d.l - (0.5+0.5*reach)*r.in(0.03, 0.065)*(0.5+d.l), d.c * r.in(1.0, 1.12), toward(d.h, 25, r.in(0, 7))}
+	dark := lch{d.l - (0.5+0.5*reach)*r.in(0.024, 0.052)*(0.5+d.l), d.c * r.in(1.0, 1.12), toward(d.h, 25, r.in(0, 7))}
 	h.hollow = 1
 	// On a pale hide a patch of deeper colour reads as a stain, so its colour is kept nearly even.
 	if pale := smooth(0.5, 0.75, d.l); pale > 0 {
@@ -191,7 +190,7 @@ func New(seed uint32, color string) *Hide {
 		h.hollow = 1 + 1.6*pale // a pale hide shows its creases by the tone between them
 	}
 	h.light, h.dark = light.rgb(), dark.rgb()
-	h.crease = crease.blend(crust, r.in(0.2, 0.45)*(0.5+0.5*warm)).rgb()
+	h.crease = crease.blend(crust, r.in(0.1, 0.24)*(0.5+0.5*warm)).rgb()
 
 	h.sWarp, h.sCloud, h.sPatch, h.sFlex = r.seed(), r.seed(), r.seed(), r.seed()
 	h.sLine, h.sSwell, h.sDither = r.seed(), r.seed(), r.seed()
@@ -274,9 +273,9 @@ func (h *Hide) Render(w int) *image.RGBA {
 		fWarpY: func(u, v float64) float64 { return h.warpA * fbm(u*h.warpF+31.4, v*h.warpF+7.9, 3, h.sWarp+1) },
 		fCloud: func(u, v float64) float64 {
 			wx, wy := 0.13*fbm(u*1.7+3, v*1.7, 2, h.sCloud+9), 0.13*fbm(u*1.7, v*1.7+5, 2, h.sCloud+10)
-			return fbm((u+wx)*h.cloudF, (v+wy)*h.cloudF, 4, h.sCloud)
+			return fbm((u+wx)*h.cloudF, (v+wy)*h.cloudF, 2, h.sCloud)
 		},
-		fPatch: func(u, v float64) float64 { return fbm(u*h.patchF, v*h.patchF, 3, h.sPatch) },
+		fPatch: func(u, v float64) float64 { return fbm(u*h.patchF, v*h.patchF, 2, h.sPatch) },
 		fFlex: func(u, v float64) float64 {
 			blobs := 0.7*fbm(u*h.flexF, v*h.flexF, 3, h.sFlex) + 0.3*fbm(u*h.flexF*2.9, v*h.flexF*2.9, 2, h.sFlex+3)
 			// Bands: broad soft ridges lying along the run of the hide.
@@ -315,11 +314,6 @@ func (h *Hide) Render(w int) *image.RGBA {
 				qx, qy := u+g.at(fWarpX, at), v+g.at(fWarpY, at)
 
 				cl := g.at(fCloud, at) * 1.7
-				if cl > 0 {
-					cl = mix(cl, 0.8*smooth(0.05, 0.6, cl), h.cloudEdge)
-				} else {
-					cl = mix(cl, -0.8*smooth(0.05, 0.6, -cl), h.cloudEdge)
-				}
 				// 0 where the hide lies quiet, 1 where it has been flexed; a patch that has lifted in colour has been worked too.
 				worked := clamp(smooth(-0.3, 0.4, g.at(fFlex, at)+h.flexBias)+0.35*h.cloudA*math.Max(cl, 0), 0, 1)
 				run := smooth(-0.25, 0.45, g.at(fRuns, at))
@@ -352,7 +346,7 @@ func (h *Hide) Render(w int) *image.RGBA {
 					near = math.Max(near, a*math.Exp(-dist*dist/1800))
 				}
 				worked = math.Max(worked, 0.9*near)
-				glow = 0.6 * near
+				glow = 0.5 * near
 
 				// The mesh sways between junctions and trembles along the way, so no line of it runs ruler-straight.
 				n1, n2, _ := gnoiseD(u*h.mesh.freq*1.3, v*h.mesh.freq*1.3, h.sLine+5)
@@ -398,20 +392,20 @@ func (h *Hide) Render(w int) *image.RGBA {
 						fine = a * (0.6*core + 0.5*shoulder + 0.15*bloom - 0.3)
 						continue
 					}
-					creased = 1 - (1-creased)*(1-a*(0.6*core+0.2*shoulder))
+					creased = 1 - (1-creased)*(1-a*(0.4*core+0.3*shoulder))
 					lifted = a * (0.5*shoulder + 0.4*bloom)    // round the crease the leather passes through its lighter tone on the way
-					hollow = 0.22 * h.hollow * a * (1 - bloom) // between its creases the dye lies a little deeper
+					hollow = 0.15 * h.hollow * a * (1 - bloom) // between its creases the dye lies a little deeper
 					glow = math.Max(glow, 0.5*a*shoulder)
 				}
 
 				// Uneven colour: broad clouds, smaller patches, lift where worked, and grain by grain so nothing is airbrushed.
-				tone := h.cloudA*cl + h.patchA*g.at(fPatch, at)*1.5 + h.flexA*(worked*(0.6+0.4*run)-0.5) + 0.3*glow
-				tone += (0.1+0.2*math.Abs(tone))*grainTone - hollow + 0.9*lifted
+				tone := h.cloudA*cl + h.patchA*g.at(fPatch, at)*1.5 + h.flexA*(worked*(0.85+0.15*run)-0.5) + 0.2*glow
+				tone += (0.08+0.15*math.Abs(tone))*grainTone - hollow + 0.6*lifted
 				c := h.base
 				if tone > 0 {
-					c = c.mix(h.light, smooth(0, 1.1, tone))
+					c = c.mix(h.light, soft(tone))
 				} else {
-					c = c.mix(h.dark, smooth(0, 1.1, -tone))
+					c = c.mix(h.dark, soft(-tone))
 				}
 				if fine > 0 {
 					c = c.mix(h.light, fine)
