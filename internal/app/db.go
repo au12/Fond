@@ -110,6 +110,18 @@ CREATE TABLE IF NOT EXISTS shopping (
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS meal_plan (
+  id INTEGER PRIMARY KEY,
+  day TEXT NOT NULL,
+  meal TEXT NOT NULL DEFAULT 'dinner',
+  recipe_id INTEGER REFERENCES recipes(id) ON DELETE CASCADE,
+  text TEXT NOT NULL DEFAULT '',
+  servings REAL NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS meal_plan_day ON meal_plan(day);
 CREATE TABLE IF NOT EXISTS recipe_versions (
   recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
   version INTEGER NOT NULL,
@@ -182,6 +194,20 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+	// Shopping lines that the cook has merged by hand (or kept apart) share a group.
+	if !s.hasColumn("shopping", "grp") {
+		if _, err := s.db.Exec(`ALTER TABLE shopping ADD COLUMN grp TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	// Authenticator codes: the secret, the last time step used (so a code works once), and hashed recovery codes.
+	for _, col := range []string{"totp_secret TEXT NOT NULL DEFAULT ''", "totp_step INTEGER NOT NULL DEFAULT 0", "recovery TEXT NOT NULL DEFAULT '[]'"} {
+		if name := strings.Fields(col)[0]; !s.hasColumn("users", name) {
+			if _, err := s.db.Exec(`ALTER TABLE users ADD COLUMN ` + col); err != nil {
+				return err
+			}
+		}
+	}
 	if _, err := s.db.Exec(`UPDATE cookbooks SET leather = (random() & 4294967294) + 1 WHERE leather = 0`); err != nil {
 		return err
 	}
@@ -217,18 +243,24 @@ type User struct {
 	Role     string          `json:"role"`
 	Prefs    json.RawMessage `json:"prefs"`
 	Created  int64           `json:"createdAt"`
-	passHash string
+	// TwoFactor says whether signing in also asks for an authenticator code.
+	TwoFactor bool `json:"twoFactor"`
+	passHash  string
+	totp      string
+	totpStep  int64
+	recovery  string
 }
 
-const userCols = `id, username, name, pass_hash, role, prefs, created_at`
+const userCols = `id, username, name, pass_hash, role, prefs, created_at, totp_secret, totp_step, recovery`
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	u := &User{}
 	var prefs string
-	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.passHash, &u.Role, &prefs, &u.Created); err != nil {
+	if err := row.Scan(&u.ID, &u.Username, &u.Name, &u.passHash, &u.Role, &prefs, &u.Created, &u.totp, &u.totpStep, &u.recovery); err != nil {
 		return nil, err
 	}
 	u.Prefs = json.RawMessage(prefs)
+	u.TwoFactor = u.totp != ""
 	return u, nil
 }
 
@@ -827,18 +859,20 @@ type ShopItem struct {
 	Checked     bool   `json:"checked"`
 	RecipeID    *int64 `json:"recipeId"`
 	RecipeTitle string `json:"recipeTitle"`
+	// Group joins lines merged by hand ("m:…") or keeps one apart ("solo:…"); empty lets Fond decide.
+	Group string `json:"group"`
 }
 
 func (s *Store) Shopping() []ShopItem {
 	out := []ShopItem{}
-	rows, err := s.db.Query(`SELECT id, text, checked, recipe_id, recipe_title FROM shopping ORDER BY id`)
+	rows, err := s.db.Query(`SELECT id, text, checked, recipe_id, recipe_title, grp FROM shopping ORDER BY id`)
 	if err != nil {
 		return out
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var x ShopItem
-		rows.Scan(&x.ID, &x.Text, &x.Checked, &x.RecipeID, &x.RecipeTitle)
+		rows.Scan(&x.ID, &x.Text, &x.Checked, &x.RecipeID, &x.RecipeTitle, &x.Group)
 		out = append(out, x)
 	}
 	return out

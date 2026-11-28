@@ -65,6 +65,7 @@ type Server struct {
 	limit   *limiter
 	cop     *http.CrossOriginProtection
 	jobs    sync.Map
+	tickets tickets
 	clips   sync.Map
 	hides   sync.Map      // one lock per cover being drawn
 	easel   chan struct{} // room to draw two covers at a time

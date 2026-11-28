@@ -30,6 +30,11 @@ type Item struct {
 	Recipe   model.Recipe
 	Image    []byte
 	Favorite bool
+	// Origin says where a recipe came from ("tandoor:12"), so importing the same file twice adds nothing twice.
+	// Mealie items leave it empty and are known by their Mealie id.
+	Origin string
+	// ImageURL is fetched when the export holds a link to the photo rather than the photo.
+	ImageURL string
 }
 
 // Book is a Mealie cookbook resolved to the recipes it contained.

@@ -1137,3 +1137,17 @@ func FromText(text string) (*model.Recipe, error) {
 	}
 	return r, nil
 }
+
+// ------------------------------------------------------------------ for importers
+
+// IngredientLines and StepLines split and clean lines the way a page's are.
+func IngredientLines(raw []string) []model.Line { return ingredientLines(raw) }
+func StepLines(raw []string) []model.Line       { return stepLines(raw) }
+
+// CleanText strips markup and entities and tidies white space.
+func CleanText(s string) string { return cleanText(s) }
+
+// FromLD reads one schema.org Recipe object, as other apps export them. It returns the recipe and its image URL.
+func FromLD(n map[string]any) (*model.Recipe, string) {
+	return ldRecipe(n, map[string]map[string]any{})
+}

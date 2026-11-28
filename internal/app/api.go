@@ -26,6 +26,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/state", s.open(s.state))
 	m.HandleFunc("POST /api/auth/setup", s.open(s.setup))
 	m.HandleFunc("POST /api/auth/login", s.open(s.login))
+	m.HandleFunc("POST /api/auth/code", s.open(s.loginCode))
 	m.HandleFunc("POST /api/auth/logout", s.open(s.logout))
 	m.HandleFunc("GET /api/me", s.user(s.me))
 	m.HandleFunc("PUT /api/me", s.user(s.updateMe))
@@ -33,6 +34,11 @@ func (s *Server) routes() {
 	m.HandleFunc("PUT /api/me/password", s.user(s.changePassword))
 	m.HandleFunc("GET /api/me/sessions", s.user(s.listSessions))
 	m.HandleFunc("DELETE /api/me/sessions/{id}", s.user(s.revokeSession))
+	m.HandleFunc("GET /api/me/2fa", s.user(s.twoFactorStatus))
+	m.HandleFunc("POST /api/me/2fa/setup", s.user(s.twoFactorSetup))
+	m.HandleFunc("POST /api/me/2fa/enable", s.user(s.twoFactorEnable))
+	m.HandleFunc("POST /api/me/2fa/disable", s.user(s.twoFactorDisable))
+	m.HandleFunc("POST /api/me/2fa/recovery", s.user(s.twoFactorRecovery))
 	m.HandleFunc("GET /api/me/tokens", s.user(s.listTokens))
 	m.HandleFunc("POST /api/me/tokens", s.user(s.createToken))
 	m.HandleFunc("DELETE /api/me/tokens/{id}", s.user(s.deleteToken))
@@ -76,10 +82,19 @@ func (s *Server) routes() {
 	m.HandleFunc("PUT /api/shopping/{id}", s.user(s.updateShopping))
 	m.HandleFunc("DELETE /api/shopping/{id}", s.user(s.deleteShopping))
 	m.HandleFunc("POST /api/shopping/clear", s.user(s.clearShopping))
+	m.HandleFunc("POST /api/shopping/group", s.user(s.groupShopping))
+	m.HandleFunc("POST /api/shopping/bulk", s.user(s.bulkShopping))
+
+	m.HandleFunc("GET /api/plan", s.user(s.listPlan))
+	m.HandleFunc("POST /api/plan", s.user(s.addPlan))
+	m.HandleFunc("PUT /api/plan/{id}", s.user(s.updatePlan))
+	m.HandleFunc("DELETE /api/plan/{id}", s.user(s.deletePlan))
+	m.HandleFunc("POST /api/plan/order", s.user(s.reorderPlan))
 
 	m.HandleFunc("POST /api/import/url", s.user(s.importURL))
 	m.HandleFunc("POST /api/import/text", s.user(s.importText))
 	m.HandleFunc("POST /api/import/photo", s.user(s.importPhoto))
+	m.HandleFunc("POST /api/import/file", s.admin(s.importFile))
 	m.HandleFunc("POST /api/import/mealie", s.admin(s.importMealieUpload))
 	m.HandleFunc("POST /api/import/mealie-api", s.admin(s.importMealieAPI))
 	m.HandleFunc("GET /api/import/local", s.admin(s.listLocalImports))
@@ -169,6 +184,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		return fail(401, "That username and password don't match")
 	}
 	s.limit.clear(userKey)
+	if u.TwoFactor {
+		// The password was right; the session waits for a code from the authenticator app.
+		s.writeJSON(w, r, 200, map[string]any{"twoFactor": true, "ticket": s.tickets.issue(u.ID)})
+		return nil
+	}
 	if err := s.startSession(w, r, u); err != nil {
 		return err
 	}
@@ -345,7 +365,10 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request, _ *User) err
 
 func (s *Server) updateUser(w http.ResponseWriter, r *http.Request, me *User) error {
 	id := pathID(r, "id")
-	var in struct{ Name, Role, Password string }
+	var in struct {
+		Name, Role, Password string
+		ResetTwoFactor       bool `json:"resetTwoFactor"`
+	}
 	if err := readJSON(w, r, &in); err != nil {
 		return err
 	}
@@ -368,6 +391,9 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request, me *User) er
 		}
 		s.store.Exec(`UPDATE users SET pass_hash=? WHERE id=?`, hashPassword(in.Password), id)
 		s.store.Exec(`DELETE FROM sessions WHERE user_id=?`, id)
+	}
+	if in.ResetTwoFactor && target.ID != me.ID {
+		s.store.Exec(`UPDATE users SET totp_secret='', totp_step=0, recovery='[]' WHERE id=?`, id)
 	}
 	u, _ := s.store.User(id)
 	s.writeJSON(w, r, 200, u)
@@ -778,7 +804,7 @@ func (s *Server) addShopping(w http.ResponseWriter, r *http.Request, _ *User) er
 	}
 	for _, it := range in.Items {
 		if t := clipStr(model.CleanLine(it.Text), 300); t != "" {
-			s.store.Exec(`INSERT INTO shopping (text, recipe_id, recipe_title, created_at) VALUES (?,?,?,?)`, t, it.RecipeID, clipStr(it.RecipeTitle, 200), now())
+			s.store.Exec(`INSERT INTO shopping (text, recipe_id, recipe_title, grp, created_at) VALUES (?,?,?,?,?)`, t, it.RecipeID, clipStr(it.RecipeTitle, 200), clipStr(it.Group, 40), now())
 		}
 	}
 	return s.listShopping(w, r, nil)
@@ -788,6 +814,7 @@ func (s *Server) updateShopping(w http.ResponseWriter, r *http.Request, _ *User)
 	var in struct {
 		Text    *string `json:"text"`
 		Checked *bool   `json:"checked"`
+		Group   *string `json:"group"`
 	}
 	if err := readJSON(w, r, &in); err != nil {
 		return err
@@ -800,6 +827,9 @@ func (s *Server) updateShopping(w http.ResponseWriter, r *http.Request, _ *User)
 	}
 	if in.Checked != nil {
 		s.store.Exec(`UPDATE shopping SET checked=? WHERE id=?`, *in.Checked, id)
+	}
+	if in.Group != nil {
+		s.store.Exec(`UPDATE shopping SET grp=? WHERE id=?`, clipStr(strings.TrimSpace(*in.Group), 40), id)
 	}
 	s.writeJSON(w, r, 200, map[string]bool{"ok": true})
 	return nil

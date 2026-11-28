@@ -1,7 +1,6 @@
 package app
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/au12/fond/internal/mealie"
+	"github.com/au12/fond/internal/migrate"
 	"github.com/au12/fond/internal/model"
 	"github.com/au12/fond/internal/scrape"
 )
@@ -433,9 +433,12 @@ func (j *Job) problem(msg string) {
 }
 
 func (j *Job) Recipe(it mealie.Item) error {
-	origin := "mealie:" + it.MealieID
+	origin := it.Origin
+	if origin == "" && it.MealieID != "" {
+		origin = "mealie:" + it.MealieID
+	}
 	var existing int64
-	if it.MealieID != "" && j.s.store.db.QueryRow(`SELECT id FROM recipes WHERE origin=?`, origin).Scan(&existing) == nil {
+	if origin != "" && j.s.store.db.QueryRow(`SELECT id FROM recipes WHERE origin=?`, origin).Scan(&existing) == nil {
 		j.mu.Lock()
 		j.ids[it.MealieID] = existing
 		j.Skipped++
@@ -443,6 +446,9 @@ func (j *Job) Recipe(it mealie.Item) error {
 		return nil
 	}
 	rec := it.Recipe
+	if it.Image == nil && it.ImageURL != "" {
+		it.Image = j.s.fetchImage(it.ImageURL)
+	}
 	if it.Image != nil {
 		if key, color, err := j.s.images.Save(it.Image); err == nil {
 			rec.Image, rec.ImageColor = key, color
@@ -567,8 +573,10 @@ func (s *Server) listLocalImports(w http.ResponseWriter, r *http.Request, _ *Use
 	out := []map[string]any{}
 	entries, _ := os.ReadDir(filepath.Join(s.cfg.DataDir, "import"))
 	for _, e := range entries {
-		if info, err := e.Info(); err == nil && !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".zip") {
-			out = append(out, map[string]any{"name": e.Name(), "size": info.Size()})
+		if info, err := e.Info(); err == nil && !e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			if k := migrate.Detect(filepath.Join(s.cfg.DataDir, "import", e.Name())); k != migrate.Unknown {
+				out = append(out, map[string]any{"name": e.Name(), "size": info.Size(), "kind": k, "app": migrate.Names[k]})
+			}
 		}
 	}
 	s.writeJSON(w, r, 200, out)
@@ -578,6 +586,7 @@ func (s *Server) listLocalImports(w http.ResponseWriter, r *http.Request, _ *Use
 func (s *Server) importLocal(w http.ResponseWriter, r *http.Request, u *User) error {
 	var in struct {
 		File string `json:"file"`
+		Mode string `json:"mode"`
 	}
 	if err := readJSON(w, r, &in); err != nil {
 		return err
@@ -587,8 +596,16 @@ func (s *Server) importLocal(w http.ResponseWriter, r *http.Request, u *User) er
 	if st, err := os.Stat(full); err != nil || st.IsDir() || name != in.File {
 		return errNotFound
 	}
-	j := s.startJob(u, func(j *Job) error { return mealie.ImportZip(full, j) })
-	s.writeJSON(w, r, 202, map[string]string{"job": j.ID})
+	kind := migrate.Detect(full)
+	if kind == migrate.Unknown {
+		return fail(400, "Fond can't tell what made this file")
+	}
+	mode := "merge"
+	if in.Mode == "replace" && kind == migrate.Fond {
+		mode = "replace"
+	}
+	j := s.startJob(u, func(j *Job) error { return s.runImport(full, kind, mode, j) })
+	s.writeJSON(w, r, 202, map[string]string{"job": j.ID, "kind": string(kind), "name": migrate.Names[kind]})
 	return nil
 }
 
@@ -609,51 +626,5 @@ func (s *Server) importMealieAPI(w http.ResponseWriter, r *http.Request, u *User
 		return mealie.ImportAPI(ctx, s.private, in.URL, in.Token, j)
 	})
 	s.writeJSON(w, r, 202, map[string]string{"job": j.ID})
-	return nil
-}
-
-// exportAll streams every recipe and photo as one zip — a portable backup.
-func (s *Server) exportAll(w http.ResponseWriter, r *http.Request, u *User) error {
-	rows, err := s.store.db.Query(`SELECT ` + recipeCols + ` FROM recipes ORDER BY id`)
-	if err != nil {
-		return err
-	}
-	var recipes []*model.Recipe
-	for rows.Next() {
-		if rec, err := scanRecipe(rows); err == nil {
-			rec.ShareToken = ""
-			recipes = append(recipes, rec)
-		}
-	}
-	rows.Close()
-	books, _ := s.store.Cookbooks()
-	for _, b := range books {
-		s.store.cookbookEntries(b)
-		b.ShareToken = ""
-	}
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="fond-export-`+time.Now().Format("2006-01-02")+`.zip"`)
-	zw := zip.NewWriter(w)
-	defer zw.Close()
-	f, _ := zw.Create("fond.json")
-	history := map[int64][]*Version{}
-	for _, rec := range recipes {
-		if vs, err := s.store.Versions(rec.ID); err == nil && len(vs) > 1 {
-			history[rec.ID] = vs
-		}
-	}
-	rules, _ := s.store.FoodRules()
-	json.NewEncoder(f).Encode(map[string]any{"version": 2, "exportedAt": now(), "recipes": recipes, "cookbooks": books, "history": history, "foodRules": rules})
-	for _, rec := range recipes {
-		if rec.Image == "" {
-			continue
-		}
-		if src, err := os.Open(filepath.Join(s.images.Dir, rec.Image+".jpg")); err == nil {
-			if dst, err := zw.CreateHeader(&zip.FileHeader{Name: "images/" + rec.Image + ".jpg", Method: zip.Store}); err == nil {
-				io.Copy(dst, src)
-			}
-			src.Close()
-		}
-	}
 	return nil
 }

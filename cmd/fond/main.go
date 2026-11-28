@@ -135,6 +135,21 @@ func main() {
 			}
 			fmt.Printf("New password for %s: %s\n", os.Args[2], pw)
 			return
+		case "reset-2fa":
+			if len(os.Args) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: fond reset-2fa <username>")
+				os.Exit(2)
+			}
+			dropPrivileges(dataDir)
+			store, err := app.OpenStore(dataDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if err := app.ResetTwoFactor(store, os.Args[2]); err != nil {
+				log.Fatalf("no user named %q", os.Args[2])
+			}
+			fmt.Printf("Two-step sign-in is off for %s. They can sign in with their password and turn it on again.\n", os.Args[2])
+			return
 		}
 	}
 
