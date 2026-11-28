@@ -35,6 +35,8 @@ export interface Food {
   z?: 1;
   /** Kind of salt. */
   t?: string;
+  /** Nutrition per 100 g: kcal, protein, fat, saturated fat, carbohydrate, fibre, sugars (g), sodium (mg). */
+  nu?: number[];
   /** B: an estimate. */
   k?: 'B';
   /** What each source family says, grams per millilitre. */

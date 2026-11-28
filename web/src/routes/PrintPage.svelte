@@ -123,7 +123,7 @@
 </div>
 
 <style>
-  .printbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px clamp(12px, 3vw, 28px); background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .printbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px clamp(12px, 3vw, 28px); background: color-mix(in srgb, var(--paper) 90%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
   .opts { flex: 1; display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; justify-content: center; }
   .mini { width: auto; min-height: 36px; height: 36px; padding: 0 32px 0 12px; border-radius: 999px; font-size: 0.86rem; flex: none; }
   .pages { flex: none; padding: 0 4px; }

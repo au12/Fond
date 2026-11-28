@@ -61,6 +61,26 @@ export { default as Utensils } from '@lucide/svelte/icons/utensils';
 export { default as Wand } from '@lucide/svelte/icons/wand-sparkles';
 export { default as Wheat } from '@lucide/svelte/icons/wheat';
 export { default as X } from '@lucide/svelte/icons/x';
+export { default as ArrowRight } from '@lucide/svelte/icons/arrow-right';
+export { default as BookText } from '@lucide/svelte/icons/book-text';
+export { default as CalendarDays } from '@lucide/svelte/icons/calendar-days';
+export { default as CalendarPlus } from '@lucide/svelte/icons/calendar-plus';
+export { default as ChevronLeft } from '@lucide/svelte/icons/chevron-left';
+export { default as Cookie } from '@lucide/svelte/icons/cookie';
+export { default as FileDown } from '@lucide/svelte/icons/file-down';
+export { default as GripVertical } from '@lucide/svelte/icons/grip-vertical';
+export { default as ListChecks } from '@lucide/svelte/icons/list-checks';
+export { default as Lock } from '@lucide/svelte/icons/lock';
+export { default as Maximize } from '@lucide/svelte/icons/maximize-2';
+export { default as Merge } from '@lucide/svelte/icons/merge';
+export { default as Minimize } from '@lucide/svelte/icons/minimize-2';
+export { default as Moon } from '@lucide/svelte/icons/moon';
+export { default as Split } from '@lucide/svelte/icons/split';
+export { default as StickyNote } from '@lucide/svelte/icons/sticky-note';
+export { default as Sun } from '@lucide/svelte/icons/sun';
+export { default as Sunrise } from '@lucide/svelte/icons/sunrise';
+export { default as EllipsisVertical } from '@lucide/svelte/icons/ellipsis-vertical';
+export { default as Columns } from '@lucide/svelte/icons/columns-2';
 
 // Food glyphs, used when a recipe has no photo.
 import Apple from '@lucide/svelte/icons/apple';

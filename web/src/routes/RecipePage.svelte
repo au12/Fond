@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { slide } from 'svelte/transition';
+  import NutritionPanel from '../components/NutritionPanel.svelte';
   import Photo from '../components/Photo.svelte';
   import ResolveSheet from '../components/ResolveSheet.svelte';
   import Rich from '../components/Rich.svelte';
@@ -436,11 +437,8 @@
         {#if r.notes}
           <section class="notes"><h3>Notes</h3><Rich text={r.notes} /></section>
         {/if}
-        {#if r.nutrition && Object.keys(r.nutrition).length}
-          <section class="notes">
-            <h3>Nutrition <span class="faint">per serving</span></h3>
-            <dl class="nutri">{#each Object.entries(r.nutrition) as [k, v]}<div><dt>{k.replace(/([A-Z])/g, ' $1').toLowerCase()}</dt><dd class="num">{v}</dd></div>{/each}</dl>
-          </section>
+        {#if pf.nutrition && dict.ready}
+          <NutritionPanel {r} o={wopts} scale={cook.scale} />
         {/if}
 
         <footer class="log">
@@ -567,7 +565,7 @@
   .hero { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-l); overflow: hidden; background: var(--sunk); isolation: isolate; }
   .hero :global(img) { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.4s; }
 
-  .controls { position: sticky; top: 64px; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 30px 0 6px; padding: 10px 0; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .controls { position: sticky; top: 64px; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 30px 0 6px; padding: 10px 0; background: color-mix(in srgb, var(--paper) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
   .stepper { display: inline-flex; align-items: center; height: 40px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
   .stepper button { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--bay); }
   .stepper button:hover { background: var(--wash); }
@@ -657,9 +655,6 @@
   @keyframes tickpulse { 50% { opacity: 0.35; } }
   .temp { font-weight: 600; white-space: nowrap; }
   .notes { margin-top: 30px; padding: 18px 20px; border-radius: var(--r-l); background: var(--sunk); line-height: 1.6; }
-  .nutri { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-  .nutri dt { font-size: 0.78rem; color: var(--ink-3); }
-  .nutri dd { font-weight: 600; }
   .log { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
   .stars { display: flex; }
   .stars button { width: 32px; height: 36px; display: grid; place-items: center; color: var(--line-2); transition: color 0.15s, transform 0.2s var(--spring); }

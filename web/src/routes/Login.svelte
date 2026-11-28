@@ -2,7 +2,7 @@
   import Logo from '../components/Logo.svelte';
   import { post } from '../lib/api';
   import { app, go, setSession } from '../lib/state.svelte';
-  import { Eye, EyeOff, Loader } from '../lib/icons';
+  import { ArrowLeft, Eye, EyeOff, Loader, ShieldCheck } from '../lib/icons';
 
   let username = $state('');
   let name = $state('');
@@ -11,6 +11,17 @@
   let busy = $state(false);
   let error = $state('');
   let shake = $state(false);
+  // After a right password, an account with two-step sign-in waits here for its code.
+  let ticket = $state('');
+  let code = $state('');
+  let recovery = $state(false);
+  let codeInput = $state<HTMLInputElement | null>(null);
+
+  function done(me: any) {
+    setSession(me);
+    const next = new URLSearchParams(app.query).get('next');
+    if (app.path === '/login') go(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
+  }
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -18,11 +29,24 @@
     busy = true;
     error = '';
     try {
+      if (ticket) {
+        done(await post('/auth/code', { ticket, code }));
+        return;
+      }
       const me = await post(app.setup ? '/auth/setup' : '/auth/login', { username, name, password });
-      setSession(me);
-      const next = new URLSearchParams(app.query).get('next');
-      if (app.path === '/login') go(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
+      if (me.twoFactor) {
+        ticket = me.ticket;
+        password = '';
+        code = '';
+        setTimeout(() => codeInput?.focus(), 60);
+        return;
+      }
+      done(me);
     } catch (err: any) {
+      if (ticket && /expired/i.test(err.message)) {
+        ticket = '';
+        code = '';
+      }
       error = err.message;
       shake = true;
       setTimeout(() => (shake = false), 400);
@@ -35,6 +59,26 @@
 <div class="login">
   <form class="panel" class:shake onsubmit={submit}>
     <div class="brand"><Logo size={40} /><span>Fond</span></div>
+    {#if ticket}
+      <div class="shield"><ShieldCheck /></div>
+      <h1>Enter your code</h1>
+      <p class="muted">{recovery ? 'Type one of the recovery codes you saved when you turned on two-step sign-in. Each works once.' : 'Open your authenticator app and enter the six-digit code for Fond.'}</p>
+      <label class="field">
+        <span>{recovery ? 'Recovery code' : 'Code'}</span>
+        {#if recovery}
+          <input class="input code" bind:this={codeInput} bind:value={code} autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxx-xxxx" required />
+        {:else}
+          <input class="input code" bind:this={codeInput} bind:value={code} inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="123 456" required
+            oninput={() => { if (code.replace(/\D/g, '').length === 6 && !busy) (codeInput?.form as HTMLFormElement | null)?.requestSubmit(); }} />
+        {/if}
+      </label>
+      {#if error}<p class="error-text" role="alert">{error}</p>{/if}
+      <button class="btn primary" disabled={busy}>{#if busy}<span class="spin" style="display:grid"><Loader /></span>{/if}Sign in</button>
+      <div class="spread small">
+        <button type="button" class="linkish" onclick={() => { ticket = ''; error = ''; }}><ArrowLeft />Back</button>
+        <button type="button" class="linkish" onclick={() => { recovery = !recovery; code = ''; error = ''; setTimeout(() => codeInput?.focus(), 30); }}>{recovery ? 'Use the authenticator app' : 'Use a recovery code'}</button>
+      </div>
+    {:else}
     {#if app.setup}
       <h1>Set up your kitchen</h1>
       <p class="muted">Create the first account. It becomes the admin, and you can add the rest of the household afterwards.</p>
@@ -53,6 +97,7 @@
     </label>
     {#if error}<p class="error-text" role="alert">{error}</p>{/if}
     <button class="btn primary" disabled={busy}>{#if busy}<span class="spin" style="display:grid"><Loader /></span>{/if}{app.setup ? 'Create account' : 'Sign in'}</button>
+    {/if}
   </form>
 </div>
 
@@ -65,4 +110,9 @@
   .pw .input { padding-right: 46px; }
   .pw .icon-btn { position: absolute; right: 2px; top: 1px; }
   .btn { height: 46px; margin-top: 4px; }
+  .shield { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--wash); color: var(--bay); animation: rise 0.4s var(--ease) both; }
+  .shield :global(svg) { width: 26px; height: 26px; }
+  .code { font: 600 1.35rem/1 var(--sans); letter-spacing: 0.18em; text-align: center; font-variant-numeric: tabular-nums; }
+  .linkish { display: inline-flex; align-items: center; gap: 6px; color: var(--bay); font-weight: 600; }
+  .linkish :global(svg) { width: 16px; height: 16px; }
 </style>

@@ -20,7 +20,7 @@ const hoverOnlyWithPointer = {
 export default defineConfig({
   plugins: [svelte()],
   css: { postcss: { plugins: [hoverOnlyWithPointer] } },
-  build: { target: 'es2022', assetsInlineLimit: 0, cssCodeSplit: false, chunkSizeWarningLimit: 600 },
+  build: { target: 'es2022', cssTarget: ['chrome111', 'edge111', 'firefox115', 'safari16.4'], assetsInlineLimit: 0, cssCodeSplit: false, chunkSizeWarningLimit: 600 },
   server: { proxy: { '/api': 'http://127.0.0.1:8080', '/img': 'http://127.0.0.1:8080' } },
   test: { include: ['src/**/*.test.ts'] },
 });

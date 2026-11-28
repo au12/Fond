@@ -45,7 +45,7 @@ export interface Cookbook {
   shareToken?: string; count: number; covers: string[]; entries?: { recipeId: number; chapter: string }[];
 }
 
-export interface User { id: number; username: string; name: string; role: string; prefs: Partial<Prefs>; createdAt: number }
+export interface User { id: number; username: string; name: string; role: string; prefs: Partial<Prefs>; createdAt: number; twoFactor?: boolean }
 
 export interface Prefs {
   system: System;
@@ -59,11 +59,13 @@ export interface Prefs {
   paper: 'letter' | 'a4';
   /** How a cup of flour is filled: spooned and levelled (120 g) or dipped and swept (142 g). */
   flour: 'spoon' | 'dip';
+  /** Show nutrition worked out from the ingredients. */
+  nutrition: boolean;
   /** One-time notes this person has already read. */
   seen: { smallWeights?: boolean };
 }
 
 export const DEFAULT_PREFS: Prefs = {
   system: 'original', weigh: false, fractions: true, temp: 'original', theme: 'auto', awake: true, baker: true, docStyle: 'classic', paper: 'letter',
-  flour: 'spoon', seen: {},
+  flour: 'spoon', nutrition: true, seen: {},
 };

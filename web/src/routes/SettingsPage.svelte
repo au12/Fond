@@ -1,5 +1,6 @@
 <script lang="ts">
   import ResolveSheet from '../components/ResolveSheet.svelte';
+  import TwoFactor from '../components/TwoFactor.svelte';
   import { api, del, get, post, put } from '../lib/api';
   import { allFoods, foodById, type Rule } from '../lib/foods';
   import { lookup, parseIngredient, show } from '../lib/ingredients';
@@ -33,7 +34,10 @@
   // ---- import
   let mealieUrl = $state('');
   let mealieToken = $state('');
-  let localFiles = $state<{ name: string; size: number }[]>([]);
+  let localFiles = $state<{ name: string; size: number; kind: string; app: string }[]>([]);
+  // A Fond backup is merged into the library, or replaces it.
+  let restoreMode = $state<'merge' | 'replace'>('merge');
+  let jobApp = $state('');
   let job = $state<any>(null);
   let uploading = $state(0);
   // ---- ai
@@ -161,6 +165,16 @@
     await del(`/users/${u.id}`).catch(oops);
     users = await get('/users');
   }
+  async function reset2fa(u: User) {
+    if (!confirm(`Turn off two-step sign-in for ${u.name}? They can sign in with just their password, and turn it on again.`)) return;
+    try {
+      await put(`/users/${u.id}`, { resetTwoFactor: true });
+      users = await get('/users');
+      toast('Two-step sign-in is off for ' + u.name);
+    } catch (err) {
+      oops(err);
+    }
+  }
   async function resetPw(u: User) {
     const pw = prompt(`New password for ${u.name} (at least 8 characters)`);
     if (!pw) return;
@@ -188,22 +202,28 @@
     };
     poll();
   }
-  function uploadZip(e: Event) {
-    const f = (e.target as HTMLInputElement).files?.[0];
+  function upload(e: Event, mode: 'merge' | 'replace' = 'merge') {
+    const input = e.target as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
     if (!f) return;
+    if (mode === 'replace' && !confirm('Replace everything in this library with the backup? Every recipe, cookbook, correction, meal plan and shopping list here now is deleted first. This can’t be undone.')) return;
     const fd = new FormData();
+    fd.append('mode', mode);
     fd.append('file', f);
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/import/mealie');
+    xhr.open('POST', '/api/import/file');
     xhr.upload.onprogress = (ev) => (uploading = ev.lengthComputable ? Math.max(0.01, ev.loaded / ev.total) : 0.01);
     xhr.onload = () => {
       uploading = 0;
       try {
         const res = JSON.parse(xhr.responseText);
-        if (xhr.status < 300) watch(res.job);
-        else toast(res.error ?? 'Upload failed', { bad: true });
+        if (xhr.status < 300) {
+          jobApp = res.name ?? '';
+          watch(res.job);
+        } else toast(res.error ?? 'Upload failed', { bad: true, ms: 8000 });
       } catch {
-        toast(xhr.status === 413 ? 'Your reverse proxy rejected the upload as too large. Put the zip in Fond’s import folder instead.' : 'Upload failed', { bad: true, ms: 8000 });
+        toast(xhr.status === 413 ? 'Your reverse proxy rejected the upload as too large. Put the file in Fond’s import folder instead.' : 'Upload failed', { bad: true, ms: 8000 });
       }
     };
     xhr.onerror = () => { uploading = 0; toast('Upload failed', { bad: true }); };
@@ -213,14 +233,19 @@
   async function fromApi(e: SubmitEvent) {
     e.preventDefault();
     try {
+      jobApp = 'Mealie';
       watch((await post('/import/mealie-api', { url: mealieUrl, token: mealieToken })).job);
     } catch (err) {
       oops(err);
     }
   }
-  async function fromLocal(file: string) {
+  async function fromLocal(file: string, kind: string) {
+    const mode = kind === 'fond' ? restoreMode : 'merge';
+    if (mode === 'replace' && !confirm('Replace everything in this library with the backup? This can’t be undone.')) return;
     try {
-      watch((await post('/import/local', { file })).job);
+      const res = await post('/import/local', { file, mode });
+      jobApp = res.name ?? '';
+      watch(res.job);
     } catch (err) {
       oops(err);
     }
@@ -273,6 +298,10 @@
           <div class="opt">
             <div><b>Fractions</b><span>Write 1½ cups instead of 1.5 cups.</span></div>
             <button class="switch" role="switch" aria-checked={pf.fractions} aria-label="Use fractions" onclick={() => savePrefs({ fractions: !pf.fractions })}></button>
+          </div>
+          <div class="opt">
+            <div><b>Nutrition</b><span>Show calories, protein, fat and carbohydrate on each recipe, estimated from its ingredients with USDA data.</span></div>
+            <button class="switch" role="switch" aria-checked={pf.nutrition} aria-label="Show nutrition" onclick={() => savePrefs({ nutrition: !pf.nutrition })}></button>
           </div>
           <div class="opt">
             <div><b>Baker’s percentages</b><span>Remember when you turn them on for a bread or pastry recipe.</span></div>
@@ -411,36 +440,41 @@
           <p class="hint" style:margin-top="10px">The bookmark sends Fond the page your browser has already loaded, so it also works on sites that turn away automated requests and on pages behind a login. On the Recipes page you can also just paste a link with Ctrl/⌘ V.</p>
         </section>
       {:else if current === 'import' && admin}
+        {#if job}
+          <div class="job" aria-live="polite">
+            {#if job.state === 'running'}
+              <b>{jobApp ? `Importing from ${jobApp}` : 'Importing'}{job.total ? ` · ${job.done} of ${job.total}` : ''}</b>
+              <div class="meter"><i style:width={`${job.total ? (100 * job.done) / job.total : 4}%`}></i></div>
+              <span class="hint">{job.current}</span>
+            {:else if job.state === 'done'}
+              <b>{jobApp === 'Fond backup' ? 'Backup restored' : 'Import finished'}</b>
+              <span>{job.imported} recipe{job.imported === 1 ? '' : 's'} added{job.skipped ? `, ${job.skipped} already here` : ''}{job.cookbooks ? `, ${job.cookbooks} cookbook${job.cookbooks === 1 ? '' : 's'}` : ''}{job.failed ? `, ${job.failed} couldn’t be read` : ''}.</span>
+              {#each job.problems as p}<span class="hint">{p}</span>{/each}
+              <div class="row"><button class="btn primary sm" onclick={() => go('/')}>See your recipes</button><button class="btn quiet sm" onclick={() => (job = null)}>Close</button></div>
+            {:else}
+              <b class="error-text">Import stopped</b><span>{job.error}</span>
+              <div><button class="btn quiet sm" onclick={() => (job = null)}>Close</button></div>
+            {/if}
+          </div>
+        {/if}
         <section>
-          <h2>Move from Mealie</h2>
-          <p class="muted">Recipes, photos, tags, categories, favorites, ratings and cookbooks come across. Structured Mealie ingredients are turned back into plain lines. Running an import twice is safe: recipes already imported are skipped.</p>
-          {#if job}
-            <div class="job">
-              {#if job.state === 'running'}
-                <b>Importing{job.total ? ` ${job.done} of ${job.total}` : ''}</b>
-                <div class="meter"><i style:width={`${job.total ? (100 * job.done) / job.total : 4}%`}></i></div>
-                <span class="hint">{job.current}</span>
-              {:else if job.state === 'done'}
-                <b>Import finished</b>
-                <span>{job.imported} recipes added{job.skipped ? `, ${job.skipped} already here` : ''}{job.cookbooks ? `, ${job.cookbooks} cookbooks` : ''}{job.failed ? `, ${job.failed} couldn’t be read` : ''}.</span>
-                {#each job.problems as p}<span class="hint">{p}</span>{/each}
-                <div><button class="btn primary sm" onclick={() => go('/')}>See your recipes</button></div>
-              {:else}
-                <b class="error-text">Import stopped</b><span>{job.error}</span>
-              {/if}
-            </div>
-          {/if}
-          <h3>From a backup or export file</h3>
-          <p class="hint">In Mealie: <b>Settings → Backups → Create</b>, then download the zip. The recipe export from <b>Data Management</b> works too.</p>
-          <label class="btn" class:primary={!job} style:width="fit-content">
-            <Upload />{uploading ? `Uploading ${Math.round(uploading * 100)}%` : 'Choose a Mealie zip'}
-            <input type="file" accept=".zip,application/zip" hidden onchange={uploadZip} disabled={!!uploading} />
+          <h2>Move from another app</h2>
+          <p class="muted">Choose an export and Fond works out which app made it. Recipes, photos, tags, ratings and notes come across, and running an import twice is safe: recipes already here are skipped.</p>
+          <ul class="apps">
+            <li><b>Mealie</b><span>Settings → Backups → Create, then download the zip. The recipe export from Data Management works too.</span></li>
+            <li><b>Tandoor</b><span>Import/Export → Export, choose Default format and all recipes, then download the zip.</span></li>
+            <li><b>Paprika</b><span>Select all recipes, then File → Export → Paprika Recipe Format. You get a .paprikarecipes file.</span></li>
+            <li><b>Recipe Sage</b><span>Settings → Export your data → JSON-LD. Photos are fetched from Recipe Sage as the recipes come in.</span></li>
+          </ul>
+          <label class="btn primary" class:busy={!!uploading} style:width="fit-content">
+            <Upload />{uploading ? `Uploading ${Math.round(uploading * 100)}%` : 'Choose an export'}
+            <input type="file" accept=".zip,.paprikarecipes,.paprikarecipe,.json,application/zip,application/json" hidden onchange={(e) => upload(e)} disabled={!!uploading} />
           </label>
           {#if localFiles.length}
             <p class="hint">Or use a file from Fond’s <code class="code">import</code> folder:</p>
-            {#each localFiles as f}<button class="btn sm" style:width="fit-content" onclick={() => fromLocal(f.name)}>{f.name} <span class="faint">{(f.size / 1048576).toFixed(1)} MB</span></button>{/each}
+            <div class="row wrap">{#each localFiles as f}<button class="btn sm" onclick={() => fromLocal(f.name, f.kind)}>{f.name} <span class="faint">{f.app} · {(f.size / 1048576).toFixed(1)} MB</span></button>{/each}</div>
           {:else}
-            <p class="hint">Very large backup? Drop the zip into the <code class="code">import</code> folder inside Fond’s data folder and reload this page.</p>
+            <p class="hint">Very large file? Drop it into the <code class="code">import</code> folder inside Fond’s data folder and reload this page.</p>
           {/if}
           <h3>Straight from a running Mealie</h3>
           <form class="stack" onsubmit={fromApi}>
@@ -450,9 +484,23 @@
           </form>
         </section>
         <section>
-          <h2>Take your recipes with you</h2>
-          <p class="muted">Download every recipe, cookbook and photo as one zip. For a full backup, copy Fond’s data folder.</p>
-          <a class="btn" href="/api/export" download style:width="fit-content"><Download />Download everything</a>
+          <h2>Back up and restore</h2>
+          <p class="muted">Download everything as one zip: every recipe with its history and photo, the cookbooks and their covers, favourites, the household’s weighing corrections, the meal plan and the shopping list.</p>
+          <a class="btn" href="/api/export" download style:width="fit-content"><Download />Download a backup</a>
+          <h3>Restore a backup</h3>
+          <div class="modes" role="radiogroup" aria-label="How to restore">
+            <button role="radio" aria-checked={restoreMode === 'merge'} class:on={restoreMode === 'merge'} onclick={() => (restoreMode = 'merge')}>
+              <b>Add to this library</b><span>Recipes and cookbooks already here are kept and not doubled. Good for bringing two Fonds together.</span>
+            </button>
+            <button role="radio" aria-checked={restoreMode === 'replace'} class:on={restoreMode === 'replace'} onclick={() => (restoreMode = 'replace')}>
+              <b>Replace everything</b><span>Clears this library first, then puts the backup back exactly as it was. Accounts stay as they are.</span>
+            </button>
+          </div>
+          <label class="btn" class:danger={restoreMode === 'replace'} style:width="fit-content">
+            <Upload />{uploading ? `Uploading ${Math.round(uploading * 100)}%` : 'Choose a Fond backup'}
+            <input type="file" accept=".zip,application/zip" hidden onchange={(e) => upload(e, restoreMode)} disabled={!!uploading} />
+          </label>
+          <p class="hint">For a copy of everything, accounts included, back up Fond’s data folder as well.</p>
         </section>
       {:else if current === 'people' && admin}
         <section>
@@ -461,7 +509,8 @@
           <ul class="list">
             {#each users as u (u.id)}
               <li>
-                <div class="grow"><b>{u.name}</b><span class="hint">{u.username}{u.role === 'admin' ? ', admin' : ''}</span></div>
+                <div class="grow"><b>{u.name}</b><span class="hint">{u.username}{u.role === 'admin' ? ', admin' : ''}{u.twoFactor ? ', two-step sign-in' : ''}</span></div>
+                {#if u.twoFactor && u.id !== app.user?.id}<button class="btn sm quiet" onclick={() => reset2fa(u)}>Turn off two-step</button>{/if}
                 <button class="btn sm quiet" onclick={() => resetPw(u)}>Reset password</button>
                 {#if u.id !== app.user?.id}<button class="icon-btn" onclick={() => removeUser(u)} aria-label={`Remove ${u.name}`}><Trash /></button>{/if}
               </li>
@@ -507,6 +556,7 @@
             <button class="btn" style:width="fit-content">Change password</button>
           </form>
         </section>
+        <TwoFactor />
         <section>
           <h2>Signed-in devices</h2>
           <ul class="list">
@@ -573,14 +623,24 @@
   .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin-top: 10px; align-items: center; font-size: 0.92rem; }
   .kv dt { font-weight: 600; color: var(--ink-2); }
   .kv dd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .job { display: grid; gap: 8px; padding: 16px 18px; border-radius: var(--r-l); background: var(--butter-soft); }
+  .job { display: grid; gap: 8px; padding: 16px 18px; border-radius: var(--r-l); background: var(--butter-soft); animation: rise 0.3s var(--ease) both; }
+  .apps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .apps li { display: grid; gap: 4px; padding: 13px 15px; border-radius: var(--r-m); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .apps b { font: 600 1.02rem/1.2 var(--serif); }
+  .apps span { font-size: 0.85rem; color: var(--ink-2); line-height: 1.45; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modes button { display: grid; gap: 4px; padding: 14px 16px; border-radius: var(--r-m); text-align: left; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); transition: box-shadow 0.15s, background 0.15s; }
+  .modes button.on { box-shadow: inset 0 0 0 2px var(--bay); background: var(--wash); }
+  .modes b { font-size: 0.95rem; }
+  .modes span { font-size: 0.84rem; color: var(--ink-2); line-height: 1.45; }
+  label.btn.busy { pointer-events: none; opacity: 0.7; }
   .meter { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 12%, transparent); overflow: hidden; }
   .meter i { display: block; height: 100%; border-radius: 999px; background: var(--bay); transition: width 0.4s var(--ease); }
   @media (max-width: 820px) {
     .layout { grid-template-columns: 1fr; gap: 20px; }
     nav { position: static; display: flex; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
     nav a, nav button { white-space: nowrap; }
-    .two { grid-template-columns: 1fr; }
+    .two, .apps, .modes { grid-template-columns: 1fr; }
     .opt { flex-wrap: wrap; }
   }
 </style>

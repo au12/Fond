@@ -236,7 +236,7 @@
 
 <style>
   .edit { width: min(1000px, 100%); display: grid; gap: 22px; }
-  .top { position: sticky; top: 64px; z-index: 10; padding: 8px 0; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .top { position: sticky; top: 64px; z-index: 10; padding: 8px 0; background: color-mix(in srgb, var(--paper) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
   .grid2.even { grid-template-columns: 1fr 1fr; }
   .four { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 12px; }

@@ -404,20 +404,20 @@ interface Measure {
   unit: Unit;
 }
 
-function metricWeight(g: number, gMax: number | null, fine = false): { text: string; unit: string } {
+export function metricWeight(g: number, gMax: number | null, fine = false): { text: string; unit: string } {
   const big = g >= 1000;
   const f = (v: number) => (big ? trimNum(Math.round(v / 10) / 100, 2) : trimNum(fine ? roundGrams(v) : roundMetric(v), 2));
   return { text: gMax != null ? `${f(g)}–${f(gMax)}` : f(g), unit: big ? 'kg' : 'g' };
 }
 
-function metricVolume(ml: number, mlMax: number | null): { text: string; unit: string } {
+export function metricVolume(ml: number, mlMax: number | null): { text: string; unit: string } {
   const big = ml >= 1000;
   const f = (v: number) => (big ? trimNum(Math.round(v / 10) / 100, 2) : trimNum(roundMetric(v), 1));
   return { text: mlMax != null ? `${f(ml)}–${f(mlMax)}` : f(ml), unit: big ? 'l' : 'ml' };
 }
 
 /** Picks the US spoon/cup measure a cook would actually reach for. */
-function usVolume(ml: number, mlMax: number | null, fractions: boolean): { text: string; unit: string } {
+export function usVolume(ml: number, mlMax: number | null, fractions: boolean): { text: string; unit: string } {
   // Try each measure and keep the largest one that lands within 2.5% of the
   // true amount; otherwise whichever is closest. So 66 ml is 4½ tbsp, not ¼ cup.
   const pick = (v: number): [number, Unit] => {
@@ -445,7 +445,7 @@ function usVolume(ml: number, mlMax: number | null, fractions: boolean): { text:
   return { text, unit: many ? unit.many : unit.one };
 }
 
-function usWeight(g: number, gMax: number | null, fractions: boolean): { text: string; unit: string } {
+export function usWeight(g: number, gMax: number | null, fractions: boolean): { text: string; unit: string } {
   const oz = g / 28.3495;
   if (oz >= 16) {
     const f = (v: number) => formatNumber(Math.round((v / 453.592) * 4) / 4, fractions);

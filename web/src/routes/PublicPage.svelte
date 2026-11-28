@@ -73,7 +73,7 @@
 
 <style>
   .pub { min-height: 100dvh; background: var(--sunk); }
-  header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px clamp(12px, 4vw, 32px); background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 10px clamp(12px, 4vw, 32px); background: color-mix(in srgb, var(--paper) 90%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
   main { display: grid; gap: 26px; justify-content: center; padding: clamp(14px, 4vw, 40px) 12px 80px; font-size: clamp(15px, 1.5vw, 17px); }
   main > :global(.sheet-paper) { width: min(860px, calc(100vw - 24px)); }
   main > :global(.sheet-paper.bleed) { width: min(1320px, calc(100vw - 24px)); }

@@ -119,6 +119,7 @@ class Food:
         self._ml: dict[str, float] = {}         # state -> largest measure seen
         self.each: dict[str, float] = {}        # size or unit -> grams
         self.water: float | None = None
+        self.nut: list[float] | None = None     # per 100 g, in the order of NUTRIENTS
         self.raw: list[str] = []                # the portions as the source words them
 
     def add_volume(self, state: str, gml: float, ml: float = CUP) -> None:
@@ -160,6 +161,25 @@ def _add_portion(food: Food, amount: float, text: str, grams: float) -> None:
         food.each.setdefault('each', grams / amount)
 
 
+# What a portion carries, per 100 g: SR Legacy names nutrients by id, FNDDS by number.
+NUTRIENTS = [  # (key, SR id, FNDDS number)
+    ('kcal', '1008', '208'), ('protein', '1003', '203'), ('fat', '1004', '204'), ('satfat', '1258', '606'),
+    ('carbs', '1005', '205'), ('fiber', '1079', '291'), ('sugar', '2000', '269'), ('sodium', '1093', '307'),
+]
+
+
+def _nutrients(foods: dict[str, Food], key: str, col: int) -> None:
+    index = {n[col]: i for i, n in enumerate(NUTRIENTS)}
+    for r in _csv(key, 'food_nutrient.csv'):
+        i = index.get(r['nutrient_id'])
+        f = foods.get(r['fdc_id'])
+        if i is None or f is None or not r['amount']:
+            continue
+        if f.nut is None:
+            f.nut = [0.0] * len(NUTRIENTS)
+        f.nut[i] = float(r['amount'])
+
+
 def load_sr() -> dict[str, Food]:
     names = {r['fdc_id']: r['description'] for r in _csv('sr', 'food.csv')}
     foods = {fid: Food('USDA', n) for fid, n in names.items()}
@@ -170,6 +190,7 @@ def load_sr() -> dict[str, Food]:
     for r in _csv('sr', 'food_nutrient.csv'):
         if r['nutrient_id'] == '1051' and r['fdc_id'] in foods:
             foods[r['fdc_id']].water = float(r['amount']) / 100
+    _nutrients(foods, 'sr', 1)
     return {f.name: f for f in foods.values()}
 
 
@@ -185,6 +206,7 @@ def load_fndds() -> dict[str, Food]:
             except ValueError:
                 continue
             _add_portion(f, amount, m.group(2), float(r['gram_weight'] or 0))
+    _nutrients(foods, 'fndds', 2)
     return {f.name: f for f in foods.values()}
 
 
@@ -311,6 +333,7 @@ def build() -> None:
     sr, fn, au = load_sr(), load_fndds(), load_ausnut()
     entries = read_entries()
     foods, report, seen_alias, seen_id = [], [], {}, set()
+    likes: list = []
     flagged = 0
     for e in entries:
         if e.id in seen_id:
@@ -320,6 +343,8 @@ def build() -> None:
         fam: dict[str, dict[str, list[float]]] = {}   # state -> family -> values
         each: dict[str, float] = {}
         water = None
+        nut: list[float] | None = None
+        nut_from = ''
         pins: dict[str, tuple[float, str]] = {}
         alts: dict[str, float] = {}
         usda_primary = False
@@ -336,6 +361,9 @@ def build() -> None:
                     if key == 'fn' and usda_primary and slot:
                         continue
                     slot.append(statistics.median(vals))
+                # Nutrition comes from the food's plain USDA record: SR Legacy first, FNDDS where SR is silent.
+                if key in ('sr', 'fn') and not st and rec.nut and nut_from != 'nut' and (nut is None or (key == 'sr' and nut_from == 'fn')):
+                    nut, nut_from = rec.nut, key
                 if key == 'sr':
                     usda_primary = True
                     if water is None and not st:
@@ -359,6 +387,18 @@ def build() -> None:
                         del each[k]
             elif key == 'water':
                 water = float(val)
+            elif key == 'nut':
+                # Nutrition from another record when the food's weights come from elsewhere: a USDA description,
+                # or "like <id>" (optionally "like <id> x 0.5") to share another food's.
+                lm = re.match(r'^like\s+([a-z0-9-]+)(?:\s*[x×]\s*([\d.]+))?$', val)
+                if lm:
+                    likes.append((len(foods), lm.group(1), float(lm.group(2) or 1), e))
+                else:
+                    rec = sr.get(val) or fn.get(val)
+                    if rec is None or not rec.nut:
+                        resolve(sr, val, e, 'nut')
+                    else:
+                        nut, nut_from = rec.nut, 'nut'
             else:
                 sys.exit(f'foods.txt:{e.lineno}: unknown field "{key}"')
 
@@ -427,6 +467,8 @@ def build() -> None:
             out['x'] = {k or 'dip': round(v, 4) for k, v in alts.items()}
         if water is not None:
             out['w'] = round(water, 3)
+        if nut is not None and e.opt('skip') is None and e.opt('nonut') is None:
+            out['nu'] = [round(v) if i in (0, 7) else round(v, 1) for i, v in enumerate(nut)]
         for flag, key in (('flour', 'f'), ('loose', 'l'), ('any', 'y'), ('count', 'q'), ('skip', 'z')):
             if e.opt(flag) is not None:
                 out[key] = 1
@@ -445,6 +487,13 @@ def build() -> None:
         extra = ', '.join(f'{s} {cup(v)}' for s, v in sorted(states.items()))
         report.append(f'| {e.id} | {cup(default)}{" (" + default_state + ")" if default_state else ""} | {fams} | {extra} | {" ".join(f"{k}={v:g}" for k, v in out.get("e", {}).items())} | {conf}{" " + note if note else ""} |')
 
+    by_id = {f['id']: f for f in foods}
+    for at, other, factor, e in likes:
+        src = by_id.get(other, {}).get('nu')
+        if src is None:
+            ERRORS.append(f'foods.txt:{e.lineno}: nut: like {other}, but {other} has no nutrition')
+        elif 'nu' not in foods[at]:
+            foods[at]['nu'] = [round(v * factor) if i in (0, 7) else round(v * factor, 1) for i, v in enumerate(src)]
     if ERRORS:
         sys.exit('\n'.join(ERRORS) + f'\n{len(ERRORS)} problems in foods.txt')
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
