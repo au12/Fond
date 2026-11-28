@@ -8,7 +8,7 @@
   import { del, get, put } from '../lib/api';
   import { COVER_COLORS, newLeather } from '../lib/leather';
   import { app, go, loadCookbooks, oops, toast } from '../lib/state.svelte';
-  import { ArrowDown, ArrowLeft, ArrowUp, Check, Pencil, Plus, Printer, RefreshCw, Search, Share, Trash, Undo, X } from '../lib/icons';
+  import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Check, Pencil, Plus, Printer, RefreshCw, Search, Share, Trash, Undo, X } from '../lib/icons';
   import type { Card, Cookbook } from '../lib/types';
 
   let { id }: { id: number } = $props();
@@ -106,19 +106,22 @@
   <div class="page">
     <a class="btn quiet sm" href="/books" style="margin:0 0 10px -10px"><ArrowLeft />Cookbooks</a>
     <header class="head">
-      <div class="cov"><Cover title={book.title} subtitle={book.subtitle} color={book.color} leather={book.leather} /></div>
+      <a class="cov" href={`/books/${id}/read`} aria-label={`Read ${book.title}`} title="Open the book"><Cover title={book.title} subtitle={book.subtitle} color={book.color} leather={book.leather} /><span class="open-hint"><BookOpen />Open</span></a>
       <div class="stack" style:gap="10px">
         <h1 class="page-title">{book.title}</h1>
         {#if book.subtitle}<p class="serif sub">{book.subtitle}</p>{/if}
         {#if book.description}<p class="muted" style:max-width="60ch" style:white-space="pre-line">{book.description}</p>{/if}
         <p class="faint small num">{book.entries?.length ?? 0} recipes{book.chapters.length ? `, ${book.chapters.length} chapters` : ''}</p>
-        <div class="row wrap" style:margin-top="6px">
-          <button class="btn primary" onclick={() => (picking = true)}><Plus />Add recipes</button>
+        <div class="actions">
+          <a class="btn primary" class:disabled={!(book.entries?.length)} href={`/books/${id}/read`}><BookOpen />Read the book</a>
+          <button class="btn" onclick={() => (picking = true)}><Plus />Add recipes</button>
           <button class="btn" class:primary={arranging} onclick={() => (arranging = !arranging)}>{arranging ? 'Done arranging' : 'Arrange'}</button>
-          <button class="icon-btn" class:on={!!book.shareToken} onclick={() => (sharing = true)} aria-label="Share" title="Share"><Share /></button>
-          <a class="icon-btn" href={`/books/${id}/print`} aria-label="Print" title="Print"><Printer /></a>
-          <button class="icon-btn" onclick={openEdit} aria-label="Edit details" title="Edit details"><Pencil /></button>
-          <button class="icon-btn" onclick={remove} aria-label="Delete cookbook" title="Delete"><Trash /></button>
+          <div class="icons">
+            <button class="icon-btn" class:on={!!book.shareToken} onclick={() => (sharing = true)} aria-label="Share" title="Share"><Share /></button>
+            <a class="icon-btn" href={`/books/${id}/print`} aria-label="Print" title="Print"><Printer /></a>
+            <button class="icon-btn" onclick={openEdit} aria-label="Edit details" title="Edit details"><Pencil /></button>
+            <button class="icon-btn" onclick={remove} aria-label="Delete cookbook" title="Delete"><Trash /></button>
+          </div>
         </div>
       </div>
     </header>
@@ -209,7 +212,15 @@
 
 <style>
   .head { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: clamp(20px, 4vw, 44px); align-items: center; margin-bottom: 36px; }
+  .cov { position: relative; display: block; transition: transform 0.35s var(--ease); }
+  .cov:hover { transform: translateY(-4px) rotate(-1.5deg); }
   .cov :global(.cover) { box-shadow: inset 0.7em 0 0.9em -0.6em rgb(0 0 0 / 0.45), 0 14px 34px rgb(20 30 25 / 0.22); }
+  .open-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%) translateY(6px); display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: rgb(0 0 0 / 0.55); color: #fff; font-size: 0.78rem; font-weight: 600; opacity: 0; transition: opacity 0.2s, transform 0.25s var(--ease); white-space: nowrap; }
+  .open-hint :global(svg) { width: 14px; height: 14px; }
+  .cov:hover .open-hint, .cov:focus-visible .open-hint { opacity: 1; transform: translateX(-50%); }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+  .icons { display: flex; gap: 2px; }
+  .btn.disabled { opacity: 0.5; pointer-events: none; }
   .sub { font-style: italic; font-size: 1.2rem; color: var(--ink-2); }
   .binding { display: flex; gap: 16px; align-items: center; }
   .try { width: 104px; flex: none; }
@@ -229,5 +240,14 @@
   .search :global(svg) { position: absolute; left: 13px; top: 13px; width: 18px; height: 18px; color: var(--ink-3); }
   .search .input { padding-left: 40px; }
   .linklike { color: var(--bay); font-weight: 600; text-decoration: underline; }
-  @media (max-width: 640px) { .head { grid-template-columns: 104px minmax(0, 1fr); align-items: start; } .rows .icon-btn { width: 34px; } .ch { max-width: 104px; } }
+  @media (max-width: 640px) {
+    .head { grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 18px; }
+    .head > .stack { display: contents; }
+    .head h1 { grid-column: 2; align-self: center; font-size: 1.7rem; }
+    .head .sub, .head .muted, .head .faint { grid-column: 1 / -1; }
+    .actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
+    .actions .btn.primary:first-child { grid-column: 1 / -1; }
+    .icons { grid-column: 1 / -1; justify-content: space-around; padding-top: 2px; border-top: 1px solid var(--line); }
+    .rows .icon-btn { width: 34px; } .ch { max-width: 104px; }
+  }
 </style>

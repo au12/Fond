@@ -81,6 +81,7 @@ export { default as Sun } from '@lucide/svelte/icons/sun';
 export { default as Sunrise } from '@lucide/svelte/icons/sunrise';
 export { default as EllipsisVertical } from '@lucide/svelte/icons/ellipsis-vertical';
 export { default as Columns } from '@lucide/svelte/icons/columns-2';
+export { default as ListTree } from '@lucide/svelte/icons/list-tree';
 
 // Food glyphs, used when a recipe has no photo.
 import Apple from '@lucide/svelte/icons/apple';

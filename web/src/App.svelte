@@ -16,6 +16,7 @@
   import SettingsPage from './routes/SettingsPage.svelte';
   import PrintPage from './routes/PrintPage.svelte';
   import PublicPage from './routes/PublicPage.svelte';
+  import ReadPage from './routes/ReadPage.svelte';
   import { app, dismiss, isPublicPath, openAdd, toasts, go } from './lib/state.svelte';
   import { BookOpen, CalendarDays, Plus, Settings, ShoppingBasket, Utensils } from './lib/icons';
 
@@ -37,7 +38,15 @@
   });
 </script>
 
-<svelte:window onscroll={() => (scrolled = scrollY > 4)} />
+<svelte:window
+  onscroll={() => (scrolled = scrollY > 4)}
+  onfocusin={(e) => {
+    // While typing on a phone the tab bar steps aside, instead of riding up on top of the keyboard.
+    const t = e.target as HTMLElement;
+    if (t.matches?.('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), textarea, select, [contenteditable]') && matchMedia('(max-width: 820px)').matches) document.documentElement.classList.add('typing');
+  }}
+  onfocusout={() => document.documentElement.classList.remove('typing')}
+/>
 
 {#if !app.ready}
   <div style="display:grid;place-items:center;height:100dvh;color:var(--bay)"><Logo size={44} /></div>
@@ -45,6 +54,8 @@
   <PublicPage kind={seg[0] === 's' ? 'recipe' : 'cookbook'} token={seg[1] ?? ''} />
 {:else if !app.user}
   <Login />
+{:else if seg[0] === 'books' && seg[2] === 'read'}
+  {#key idOf(seg[1])}<ReadPage id={idOf(seg[1])} />{/key}
 {:else if printing}
   <PrintPage kind={seg[0] === 'books' ? 'cookbook' : 'recipe'} id={idOf(seg[1])} />
 {:else}

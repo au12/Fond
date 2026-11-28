@@ -1,5 +1,7 @@
 <script lang="ts">
   import BookDoc from '../components/BookDoc.svelte';
+  import BookViewer from '../components/book/BookViewer.svelte';
+  import { tick } from 'svelte';
   import Logo from '../components/Logo.svelte';
   import RecipeDoc from '../components/RecipeDoc.svelte';
   import { get } from '../lib/api';
@@ -27,6 +29,14 @@
 
   // Paper gets the page layout: floats instead of grids, and the photograph on a page of its own in a book.
   let paged = $state(false);
+  // A shared cookbook opens as a book; printing lays it out as pages for paper instead.
+  let printBook = $state(false);
+  async function printCookbook() {
+    printBook = true;
+    paged = true;
+    await tick();
+    setTimeout(() => window.print(), 300);
+  }
 
   function step(d: number) {
     if (recipe && recipe.servings > 0) scale = Math.max(1, Math.round(recipe.servings * scale + d)) / recipe.servings;
@@ -38,7 +48,11 @@
   }
 </script>
 
-<svelte:window onbeforeprint={() => (paged = true)} onafterprint={() => (paged = false)} />
+<svelte:window onbeforeprint={() => (paged = true)} onafterprint={() => { paged = false; printBook = false; }} />
+
+{#if book && !printBook && !gone}
+  <BookViewer {book} {recipes} onprint={printCookbook} />
+{/if}
 
 <div class="pub">
   <header class="noprint">
