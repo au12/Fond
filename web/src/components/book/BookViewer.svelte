@@ -1,7 +1,8 @@
 <script lang="ts">
   // A cookbook to read like a book: the leather cover opens, pages turn, a photograph faces each recipe.
   // Two pages at a time on a wide screen, one at a time on a phone.
-  import { flushSync, mount, tick, unmount, untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
+  import { fitsIn } from './measure';
   import BookPage from './BookPage.svelte';
   import { layout, partsOf, sectionsOf, singles, spreads, folio, type Page, type Part } from '../../lib/book';
   import type { System } from '../../lib/ingredients';
@@ -28,30 +29,11 @@
   let probe = $state<HTMLElement | null>(null);
   const sections = $derived(sectionsOf(book, recipes));
 
-  /** Lays a page out out of sight and says whether its content stays inside the page. */
-  function fitsFor(host: HTMLElement) {
-    return (r: Recipe, part: Part, chapter: string, n: number) => {
-      const page: Page = { kind: 'recipe', r, n, chapter, part };
-      const c = mount(BookPage, { target: host, props: { page, index: 9, book, opts, temp, side: 'right' } });
-      flushSync();
-      const inner = host.querySelector('.in') as HTMLElement | null;
-      const rp = host.querySelector('.rp') as HTMLElement | null;
-      let ok = true;
-      if (inner && rp) {
-        const box = inner.getBoundingClientRect();
-        const bottom = box.bottom - parseFloat(getComputedStyle(inner).paddingBottom) - 4;
-        ok = rp.getBoundingClientRect().bottom <= bottom;
-      }
-      unmount(c);
-      return ok;
-    };
-  }
-
   async function paginate() {
     await tick();
     if (!probe) return;
     await document.fonts?.ready;
-    const fits = fitsFor(probe);
+    const fits = fitsIn(probe, { book, opts, temp });
     const parts = new Map<number, Part[]>();
     for (const g of sections) for (const it of g.items) parts.set(it.r.id, partsOf(it.r, g.name, it.n, fits));
     const keep = pages.length ? pageAt() : -1;
@@ -248,7 +230,7 @@
 
 <div class="reader" role="dialog" aria-modal="true" aria-label={book.title} style:--pw={`${pw}px`} style:--ph={`${ph}px`}>
   <header class="chrome">
-    <button class="icon-btn light" onclick={() => onclose?.()} aria-label="Close the book"><ArrowLeft /></button>
+    {#if onclose}<button class="icon-btn light" onclick={() => onclose?.()} aria-label="Close the book"><ArrowLeft /></button>{:else}<span style="width:42px"></span>{/if}
     <div class="what">
       <b>{book.title}</b>
       <span class="num">{label}</span>

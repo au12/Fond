@@ -59,6 +59,11 @@ export interface Prefs {
   paper: 'letter' | 'a4';
   /** How a cup of flour is filled: spooned and levelled (120 g) or dipped and swept (142 g). */
   flour: 'spoon' | 'dip';
+  /** How this person last printed, so the next print starts the same way. */
+  print?: Partial<{
+    paper: string; size: 0 | 1 | 2; style: 'classic' | 'modern'; photo: 'top' | 'page' | 'off'; notes: boolean; qr: boolean; source: boolean; nutrition: boolean;
+    photos: boolean; cover: boolean; endpapers: boolean; duplex: boolean; folios: boolean;
+  }>;
   /** Show nutrition worked out from the ingredients. */
   nutrition: boolean;
   /** One-time notes this person has already read. */

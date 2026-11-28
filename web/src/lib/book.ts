@@ -26,6 +26,10 @@ export interface Part {
   fit: number;
   first: boolean;
   notes: boolean;
+  /** The last page of the recipe, which carries its footnotes (source, QR code, nutrition). */
+  last?: boolean;
+  /** A photograph across the top of the first page, for a recipe printed on its own. */
+  photo?: boolean;
 }
 
 export type TocRow = { kind: 'chapter'; name: string } | { kind: 'recipe'; title: string; n: number; page: number };
@@ -57,30 +61,38 @@ export type Fits = (r: Recipe, part: Part, chapter: string, n: number) => boolea
 const FITS = [0, 1, 2, 3];
 
 /** Splits a recipe over as few pages as it needs: one, at the roomiest setting that fits, or more. */
-export function partsOf(r: Recipe, chapter: string, n: number, fits: Fits): Part[] {
+export function partsOf(r: Recipe, chapter: string, n: number, fits: Fits, o: { photo?: boolean; notes?: boolean } = {}): Part[] {
   const steps = r.steps.length;
-  const hasNotes = !!r.notes?.trim();
+  const hasNotes = !!r.notes?.trim() && o.notes !== false;
+  const photo = !!o.photo && !!r.image;
   for (const fit of FITS) {
-    const whole = { from: 0, to: steps, fit, first: true, notes: hasNotes };
+    const whole = { from: 0, to: steps, fit, first: true, notes: hasNotes, last: true, photo };
     if (fits(r, whole, chapter, n)) return [whole];
   }
   const fit = FITS[FITS.length - 1];
   const parts: Part[] = [];
   // The first page holds the ingredients and as many steps as fit beside them.
-  let k = largest(0, steps, (to) => fits(r, { from: 0, to, fit, first: true, notes: false }, chapter, n));
-  parts.push({ from: 0, to: k, fit, first: true, notes: false });
+  let k = largest(0, steps, (to) => fits(r, { from: 0, to, fit, first: true, notes: false, photo }, chapter, n));
+  parts.push({ from: 0, to: k, fit, first: true, notes: false, photo });
   // Continuation pages hold the rest of the method, then the notes.
   let guard = 0;
   while (k < steps && guard++ < 40) {
     const to = Math.max(k + 1, largest(k, steps, (t) => fits(r, { from: k, to: t, fit, first: false, notes: false }, chapter, n)));
-    const withNotes = to === steps && hasNotes && fits(r, { from: k, to, fit, first: false, notes: true }, chapter, n);
+    const withNotes = to === steps && hasNotes && fits(r, { from: k, to, fit, first: false, notes: true, last: true }, chapter, n);
     parts.push({ from: k, to, fit, first: false, notes: withNotes });
     k = to;
   }
   const last = parts[parts.length - 1];
   if (hasNotes && !last.notes) {
-    if (fits(r, { ...last, notes: true }, chapter, n)) last.notes = true;
+    if (fits(r, { ...last, notes: true, last: true }, chapter, n)) last.notes = true;
     else parts.push({ from: steps, to: steps, fit, first: false, notes: true });
+  }
+  const end = parts[parts.length - 1];
+  end.last = true;
+  // The footnotes need room on the last page too; when they don't fit there, they get a page of their own.
+  if (!fits(r, end, chapter, n) && (end.to > end.from || end.notes)) {
+    end.last = false;
+    parts.push({ from: steps, to: steps, fit, first: false, notes: false, last: true });
   }
   return parts;
 }

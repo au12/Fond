@@ -1,7 +1,6 @@
 <script lang="ts">
-  import BookDoc from '../components/BookDoc.svelte';
   import BookViewer from '../components/book/BookViewer.svelte';
-  import { tick } from 'svelte';
+  import PrintPage from './PrintPage.svelte';
   import Logo from '../components/Logo.svelte';
   import RecipeDoc from '../components/RecipeDoc.svelte';
   import { get } from '../lib/api';
@@ -29,14 +28,8 @@
 
   // Paper gets the page layout: floats instead of grids, and the photograph on a page of its own in a book.
   let paged = $state(false);
-  // A shared cookbook opens as a book; printing lays it out as pages for paper instead.
-  let printBook = $state(false);
-  async function printCookbook() {
-    printBook = true;
-    paged = true;
-    await tick();
-    setTimeout(() => window.print(), 300);
-  }
+  // A shared cookbook opens as a book. Printing, for a recipe or a book, opens the print page with its options.
+  let printing = $state(false);
 
   function step(d: number) {
     if (recipe && recipe.servings > 0) scale = Math.max(1, Math.round(recipe.servings * scale + d)) / recipe.servings;
@@ -48,10 +41,13 @@
   }
 </script>
 
-<svelte:window onbeforeprint={() => (paged = true)} onafterprint={() => { paged = false; printBook = false; }} />
+<svelte:window onbeforeprint={() => (paged = true)} onafterprint={() => (paged = false)} />
 
-{#if book && !printBook && !gone}
-  <BookViewer {book} {recipes} onprint={printCookbook} />
+{#if printing && (recipe || book)}
+  <PrintPage kind={recipe ? 'recipe' : 'cookbook'} given={recipe ? { recipe } : { book: book!, recipes }} onback={() => (printing = false)} />
+{:else}
+{#if book && !gone}
+  <BookViewer {book} {recipes} onprint={() => (printing = true)} />
 {/if}
 
 <div class="pub">
@@ -71,7 +67,7 @@
       <button class:on={system === 'metric'} onclick={() => (system = 'metric')}>Metric</button>
       <button class:on={system === 'us'} onclick={() => (system = 'us')}>US</button>
     </div>
-    <button class="icon-btn" onclick={() => window.print()} aria-label="Print"><Printer /></button>
+    <button class="icon-btn" onclick={() => (printing = true)} aria-label="Print"><Printer /></button>
   </header>
 
   <main>
@@ -79,11 +75,10 @@
       <div class="empty"><h2>This link is no longer shared</h2><p>The owner may have turned sharing off.</p></div>
     {:else if recipe}
       <div class="sheet-paper"><RecipeDoc r={recipe} {opts} {paged} fit={paged ? 1 : 0} /></div>
-    {:else if book}
-      <BookDoc {book} {recipes} {opts} {paged} />
     {/if}
   </main>
 </div>
+{/if}
 
 <style>
   .pub { min-height: 100dvh; background: var(--sunk); }
