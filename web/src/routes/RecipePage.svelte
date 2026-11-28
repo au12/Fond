@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { slide } from 'svelte/transition';
   import NutritionPanel from '../components/NutritionPanel.svelte';
+  import PlanSheet from '../components/PlanSheet.svelte';
   import Photo from '../components/Photo.svelte';
   import ResolveSheet from '../components/ResolveSheet.svelte';
   import Rich from '../components/Rich.svelte';
@@ -16,7 +17,7 @@
   import { left, startTimer, timerFor, toggleTimer } from '../lib/timers.svelte';
   import { keepAwake } from '../lib/wake';
   import { dict, ensureFoods, weighOptions } from '../lib/weigh.svelte';
-  import { ArrowLeft, BookPlus, Check, ChevronRight, CircleHelp, Ellipsis, ExternalLink, Heart, History, ListPlus, Minus, Pencil, Percent, Plus, Printer, RotateCcw, Scale, Share, Star, Timer, Trash, Wheat, X } from '../lib/icons';
+  import { ArrowLeft, BookPlus, CalendarPlus, Check, ChevronRight, CircleHelp, Ellipsis, ExternalLink, Heart, History, ListPlus, Minus, Pencil, Percent, Plus, Printer, RotateCcw, Scale, Share, Star, Timer, Trash, Wheat, X } from '../lib/icons';
   import type { Extra, Recipe } from '../lib/types';
 
   let { id }: { id: number } = $props();
@@ -32,6 +33,7 @@
   let menu = $state(false);
   let sharing = $state(false);
   let booksOpen = $state(false);
+  let planning = $state(false);
   let shopOpen = $state(false);
   let shopPick = $state<boolean[]>([]);
   let heartPop = $state(false);
@@ -294,6 +296,7 @@
       <button class="btn quiet sm back" onclick={() => (history.length > 1 ? history.back() : go('/'))}><ArrowLeft />Recipes</button>
       <div class="grow"></div>
       <button class="icon-btn heart" class:on={r.favorite} class:pop={heartPop} onanimationend={() => (heartPop = false)} onclick={fav} aria-label="Favorite" aria-pressed={r.favorite}><Heart /></button>
+      <button class="icon-btn" onclick={() => (planning = true)} aria-label="Add to the meal plan" title="Plan it"><CalendarPlus /></button>
       <button class="icon-btn" class:on={r.cookbooks.length > 0} onclick={() => (booksOpen = true)} aria-label="Add to a cookbook" title="Cookbooks"><BookPlus /></button>
       <button class="icon-btn" class:on={!!r.shareToken} onclick={() => (sharing = true)} aria-label="Share" title="Share"><Share /></button>
       <a class="icon-btn deskonly" href={`${recipePath(r)}/print?weigh=${weighing ? 1 : 0}`} aria-label="Print" title="Print"><Printer /></a>
@@ -519,6 +522,8 @@
       {#if cook.scale !== 1}<p class="hint">Weights here are for the amounts you are making now ({formatNumber(cook.scale, true)}× the recipe).</p>{/if}
     </div>
   </Sheet>
+
+  <PlanSheet bind:open={planning} recipeId={id} servings={r.servings ? Math.round(r.servings * cook.scale) : 0} />
 
   <ResolveSheet bind:open={resolveOpen} line={resolveLine} options={wopts} canScope onfix={setFix} />
 

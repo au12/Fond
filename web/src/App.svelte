@@ -12,16 +12,17 @@
   import Cookbooks from './routes/Cookbooks.svelte';
   import CookbookPage from './routes/CookbookPage.svelte';
   import Shopping from './routes/Shopping.svelte';
+  import PlanPage from './routes/PlanPage.svelte';
   import SettingsPage from './routes/SettingsPage.svelte';
   import PrintPage from './routes/PrintPage.svelte';
   import PublicPage from './routes/PublicPage.svelte';
   import { app, dismiss, isPublicPath, openAdd, toasts, go } from './lib/state.svelte';
-  import { BookOpen, Plus, Settings, ShoppingBasket, Utensils } from './lib/icons';
+  import { BookOpen, CalendarDays, Plus, Settings, ShoppingBasket, Utensils } from './lib/icons';
 
   let scrolled = $state(false);
   const seg = $derived(app.path.split('/').filter(Boolean));
   const idOf = (s: string | undefined) => parseInt(s ?? '', 10) || 0;
-  const section = $derived(seg[0] === 'books' ? 'books' : seg[0] === 'list' ? 'list' : seg[0] === 'settings' ? 'settings' : 'recipes');
+  const section = $derived(seg[0] === 'books' ? 'books' : seg[0] === 'list' ? 'list' : seg[0] === 'plan' ? 'plan' : seg[0] === 'settings' ? 'settings' : 'recipes');
   const printing = $derived(seg[2] === 'print');
 
   // Android "Share to Fond" lands on /share?url=…; some apps put the link in text.
@@ -53,12 +54,13 @@
       <nav class="topnav" aria-label="Main">
         <a href="/" class:on={section === 'recipes'}>Recipes</a>
         <a href="/books" class:on={section === 'books'}>Cookbooks</a>
+        <a href="/plan" class:on={section === 'plan'}>Meal plan</a>
         <a href="/list" class:on={section === 'list'}>Shopping list</a>
       </nav>
       <div class="grow"></div>
       {#if !app.online}<span class="chip" style="color:var(--tomato)">Offline</span>{/if}
       <button class="btn primary desk" onclick={() => openAdd()}><Plus />Add recipe</button>
-      <a href="/settings" class="icon-btn desk" class:on={section === 'settings'} aria-label="Settings"><Settings /></a>
+      <a href="/settings" class="icon-btn" class:on={section === 'settings'} aria-label="Settings"><Settings /></a>
     </header>
 
     <main>
@@ -76,6 +78,8 @@
         <Cookbooks />
       {:else if seg[0] === 'list'}
         <Shopping />
+      {:else if seg[0] === 'plan'}
+        <PlanPage />
       {:else if seg[0] === 'settings'}
         <SettingsPage tab={seg[1] ?? ''} />
       {:else}
@@ -85,10 +89,10 @@
 
     <nav class="tabbar" aria-label="Main">
       <a href="/" class:on={section === 'recipes'}><Utensils />Recipes</a>
-      <a href="/books" class:on={section === 'books'}><BookOpen />Cookbooks</a>
+      <a href="/books" class:on={section === 'books'}><BookOpen />Books</a>
       <button class="add" onclick={() => openAdd()} aria-label="Add recipe"><Plus /></button>
+      <a href="/plan" class:on={section === 'plan'}><CalendarDays />Plan</a>
       <a href="/list" class:on={section === 'list'}><ShoppingBasket />List</a>
-      <a href="/settings" class:on={section === 'settings'}><Settings />Settings</a>
     </nav>
     <TimerDock />
     <AddSheet />
