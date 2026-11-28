@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
+Fond learns to set a page like a cookbook, and binds every book in leather.
+
+- Fixed on phones: hover styles stuck after a tap, the bars jumping and the scroll position lost on page changes, the edit page jumping while typing in a long text box.
 - **Cookbook pages are re-typeset** after a classic cookbook spread: the chapter as a running head, the title in letterspaced capitals, a justified headnote over a hairline, the yield and times above a narrow sans-serif ingredient column, the method beside it with small hanging step numbers, the notes in a tinted box at the foot of the page and the recipe's number beneath. Modern and Compact share the new structure.
 - **A photograph faces its recipe.** In a shared cookbook each recipe is a spread, photo on the left; on a phone the photo sits above the recipe. Printed, the photo takes a page of its own, to the edges of the paper.
 - **A printed recipe keeps to one sheet when it can.** The photo and the whole ingredient list stay on the first page. The print preview is now a scale model of the sheet: it sets the recipe at up to five tightnesses, uses the roomiest that fits one page, never goes below about 10 pt, and says how many pages will print.
