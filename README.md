@@ -1,6 +1,6 @@
 <p align="center"><img src="icon.png" width="112" alt="Fond icon"></p>
 <h1 align="center">Fond</h1>
-<p align="center">A fast, uncluttered, self-hosted recipe keeper.<br>One small container. One SQLite file. No food database to babysit.</p>
+<p align="center">A fast, uncluttered, self-hosted recipe keeper.<br>Save, cook, plan the week, shop, and keep your recipes in cookbooks that read like books.<br>One small container. One SQLite file. No food database to babysit.</p>
 
 ![The recipe library](docs/screenshots/desktop-library.jpg)
 
@@ -17,16 +17,26 @@
 - **Your units.** Show every recipe as written, in metric, or in US measures. When an author gives both (`1 cup (120 g)`), Fond uses the author's number instead of doing arithmetic.
 - **Baker's percentages.** For any recipe with flour: percentages against total flour, hydration, salt, and "make it with 800 g of flour" scaling. A starter is split into flour and water at the hydration you keep it at.
 - **Every version kept.** Change the ingredients or the method and the recipe as it was is kept. The history shows what changed, line by line, and brings any version back.
-- **Cookbooks.** Collect recipes into books with chapters. A recipe can live in as many books as you like. Every book is bound in a leather of its own: Fond draws the hide from a random seed when the book is made, so no two covers match, and the cover then stays as it is unless you ask for a new one.
-- **Beautifully typeset.** Shared links, printouts and cookbooks are set like a real cookbook page: a letterspaced title, a justified headnote, a narrow ingredient column beside the method, and the cook's notes in a tinted box. In a cookbook each photograph fills the page facing its recipe. A printed recipe keeps its photo and its whole ingredient list on the first page, and is tightened (never below about 10 pt) to stay on one sheet when it can. Classic, modern or compact style, on Letter, A4, half-letter or 4 × 6 cards, with an optional QR code back to the recipe.
-- **Light.** A ~21 MB image, about 30 MB of RAM, and a 103 KB (gzipped) web app, plus 22 KB for the ingredient table. No external database, cache or queue.
-- **Safe to put on the internet.** See [Security](#security).
+- **Plan the week.** Put recipes, or notes like “Leftovers”, on the days and meals of the week, for as many servings as you are cooking. Drag a meal to another day on a desktop. One button puts the week's ingredients on the shopping list, scaled to the servings planned.
+- **A shopping list that adds itself up.** The same ingredient from different recipes becomes one line: a cup of flour and 200 g of flour are 320 g of flour, two recipes' eggs are counted together, and cups and spoons stay exact. Lines are sorted into aisles. Merge any lines by hand, keep them apart, delete them one at a time or several at once.
+- **Nutrition, worked out.** Calories, protein, fat, carbohydrate, fibre, sugars and sodium per serving, estimated from the ingredients with USDA FoodData Central figures, with a plain note of what was counted. Turn it off in Settings if you would rather not see it.
+- **Cookbooks that read like books.** Collect recipes into books with chapters; a recipe can live in as many books as you like. Open one and it reads like a real cookbook: the leather cover opens, pages turn on the spine, the contents page jumps to a recipe, and every photograph faces its recipe. Two pages at a time on a wide screen, one at a time with a swipe on a phone. Every book is bound in a leather of its own, drawn from a random seed when the book is made, so no two covers match.
+- **Printed beautifully, at any size.** A printed recipe or cookbook is laid out as real pages at the size of the paper, and the preview shows exactly those pages. Letter, A4, legal, half letter and A5; 6 × 9, 7 × 10 and 8 × 10 book pages; 5 × 7, 4 × 6 and 3 × 5 cards. Classic or modern, three text sizes, the photo on top, on its own page or left out, with notes, weights, nutrition, the source and a QR code back to the recipe. A whole cookbook prints as its book, with covers, contents and mirrored margins for printing on both sides. Recipes also export as Markdown, plain text or schema.org JSON.
+- **Move in from anywhere.** Import from Mealie (backup, export or a running server), Tandoor, Paprika and Recipe Sage. Fond's own backups restore with one upload, into an empty Fond or merged into one you already use.
+- **Light.** A ~21 MB image, about 30 MB of RAM, and a 152 KB (gzipped) web app, plus 26 KB for the ingredient table. No external database, cache or queue.
+- **Safe to put on the internet.** Two-step sign-in with an authenticator app, and more. See [Security](#security).
 
-| Cooking | Typeset for print |
+| Cooking | Nutrition |
 | --- | --- |
-| ![Ticked ingredients, a completed step and a running timer](docs/screenshots/desktop-cooking.jpg) | ![Print preview](docs/screenshots/desktop-print.jpg) |
-| **Cookbooks** | **A shared cookbook** |
-| ![Cookbook shelf](docs/screenshots/desktop-cookbooks.jpg) | ![A cookbook shared by link](docs/screenshots/desktop-shared-cookbook.jpg) |
+| ![Ticked ingredients, a completed step and a running timer](docs/screenshots/desktop-cooking.jpg) | ![Nutrition per serving, worked out from the ingredients](docs/screenshots/desktop-nutrition.jpg) |
+| **The week's plan** | **A shopping list that adds up** |
+| ![A week of meals](docs/screenshots/desktop-plan.jpg) | ![The shopping list, with lines for the same food joined](docs/screenshots/desktop-shopping.jpg) |
+| **Cookbooks** | **Reading a cookbook** |
+| ![Cookbook shelf](docs/screenshots/desktop-cookbooks.jpg) | ![A cookbook open at a recipe, the photograph on the facing page](docs/screenshots/desktop-book.jpg) |
+| **A cover that opens** | **A cookbook shared by link** |
+| ![A leather-bound cookbook, closed](docs/screenshots/desktop-book-cover.jpg) | ![A shared cookbook, read by a guest](docs/screenshots/desktop-shared-cookbook.jpg) |
+| **Printing a recipe** | **Printing a cookbook** |
+| ![Print preview of a recipe on letter paper](docs/screenshots/desktop-print.jpg) | ![Print preview of a cookbook on 6 x 9 pages](docs/screenshots/desktop-print-book.jpg) |
 
 | **Weighing** | **Where each weight comes from** |
 | --- | --- |
@@ -35,12 +45,18 @@
 ![A recipe's history, showing what changed in one version](docs/screenshots/desktop-history.jpg)
 
 <p align="center">
-  <img src="docs/screenshots/mobile-library.jpg" width="16%" alt="Library on a phone">
-  <img src="docs/screenshots/mobile-recipe.jpg" width="16%" alt="Recipe on a phone">
-  <img src="docs/screenshots/mobile-weigh.jpg" width="16%" alt="A recipe shown by weight on a phone">
-  <img src="docs/screenshots/mobile-cooking.jpg" width="16%" alt="Cooking with a timer running on a phone">
-  <img src="docs/screenshots/mobile-history.jpg" width="16%" alt="Recipe history on a phone">
-  <img src="docs/screenshots/mobile-add.jpg" width="16%" alt="Adding a recipe on a phone">
+  <img src="docs/screenshots/mobile-library.jpg" width="19%" alt="Library on a phone">
+  <img src="docs/screenshots/mobile-recipe.jpg" width="19%" alt="Recipe on a phone">
+  <img src="docs/screenshots/mobile-weigh.jpg" width="19%" alt="A recipe shown by weight on a phone">
+  <img src="docs/screenshots/mobile-cooking.jpg" width="19%" alt="Cooking with a timer running on a phone">
+  <img src="docs/screenshots/mobile-add.jpg" width="19%" alt="Adding a recipe on a phone">
+</p>
+<p align="center">
+  <img src="docs/screenshots/mobile-plan.jpg" width="19%" alt="The meal plan on a phone">
+  <img src="docs/screenshots/mobile-shopping.jpg" width="19%" alt="The shopping list on a phone">
+  <img src="docs/screenshots/mobile-book.jpg" width="19%" alt="Reading a cookbook on a phone">
+  <img src="docs/screenshots/mobile-print.jpg" width="19%" alt="Print preview on a phone">
+  <img src="docs/screenshots/mobile-history.jpg" width="19%" alt="Recipe history on a phone">
 </p>
 
 ## Fond, Mealie and Tandoor
@@ -58,18 +74,21 @@ Mealie and Tandoor are good, mature projects, and both do things Fond does not. 
 | Tick off ingredients and steps | **Yes**, and it survives a reload | Yes | Yes |
 | Screen stays awake | Yes | Yes | Yes |
 | Cookbooks | Hand-arranged, with chapters; a recipe can be in many | Saved filters over categories and tags | Hand-arranged books |
-| Typeset print and share pages | **Three styles, four paper sizes, QR code** | Print view | Print view |
+| Typeset print and share pages | **Real pages at 11 paper and card sizes, QR code** | Print view | Print view |
+| Read a cookbook like a book | **Yes**: page turns, contents, facing photographs | No | No |
 | Share a whole cookbook by link | **Yes**, per cookbook | Only by making the group public | With other accounts |
 | Android share sheet | Yes | No | Yes |
 | iPhone share sheet | Shortcut | Shortcut | Shortcut |
 | Sites that block servers | Browser bookmark sends the loaded page | Paste the page's HTML by hand | Bookmarklet |
 | Imports from Mealie | **Yes**: backup, export or live API | n/a | Yes |
-| Meal planner | No | **Yes** | **Yes** |
+| Meal planner | Yes | Yes | Yes |
+| Shopping list joins the same ingredient | Yes, with no setup | Yes, for linked foods | Yes, for linked foods |
 | Single sign-on (OIDC) | No | **Yes** | **Yes** |
-| Nutrition and food data | Shown when a recipe has it | **Yes**, per food | **Yes**, per food and property |
-| Importers from other apps | Mealie only | **Many** | **Many** |
+| Two-step sign-in | **Authenticator codes, built in** | Through your single sign-on provider | Through your single sign-on provider |
+| Nutrition | Estimated per serving from USDA data, with no setup | **Yes**, per food you fill in | **Yes**, per food and property |
+| Importers from other apps | Mealie, Tandoor, Paprika, Recipe Sage | **Many** | **Many** |
 
-Pick Mealie or Tandoor if you want meal planning, single sign-on or detailed nutrition tracking. Pick Fond if you mostly want to save recipes quickly, cook from them comfortably and print or share them looking good.
+Pick Mealie or Tandoor if you want single sign-on, many importers or nutrition tracked food by food. Pick Fond if you want to save recipes quickly, cook from them comfortably, plan the week without a database of foods to keep, and keep cookbooks that look and print like books.
 
 ## Install
 
@@ -135,6 +154,20 @@ Matching is deliberately cautious. A line is tied to a food by the head noun of 
 
 USDA data is in the public domain. AUSNUT 2023 is © Food Standards Australia New Zealand, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+## Meal plan and shopping list
+
+**Plan** shows a week at a time, starting on the day your week starts. Add a recipe or a note to any day, as breakfast, lunch, dinner or a snack, for a number of servings; on a recipe, the calendar button puts it straight on the plan. **Shop for this week** adds the ingredients of the meals you pick, scaled to the servings planned, leaving out the days already past.
+
+The shopping list keeps each line as written and works out the rest when it is shown. Lines Fond can tie to the same food in its ingredient table are joined and added up: weights add to a weight, cups and spoons to an exact measure (`1 cup + 2 tbsp`), counts to a count, and different kinds of measure of a food it can weigh to one weight. Lines it can't join are kept as they are, so nothing is lost. Each joined line shows which recipes it came from and opens to the lines inside it. **Select** picks lines to merge by hand or delete together; a joined line can be kept apart again.
+
+## Nutrition
+
+Every food in the ingredient table carries USDA FoodData Central (SR Legacy, FNDDS) figures per 100 g. Fond weighs each ingredient line the way it does for **Weigh**, adds the lines up, and divides by the servings. The panel at the foot of a recipe says how many ingredients were counted and what share of the recipe by weight that covers, and lists any it could not count. Lines without an amount ("salt to taste"), fat for frying and flour for dusting are left out. Figures are for the raw ingredients, so treat them as a guide. **Settings → Preferences → Nutrition** turns the panel off; a recipe's own figures from its source are shown beside the estimate.
+
+## Printing
+
+Printing lays a recipe or a cookbook out as real pages at the size of the paper, and the preview is those pages, so what you see is what prints. Type is set for the sheet: 11 pt on a letter page at the medium size, smaller on a card. A recipe takes the fewest pages it can at a comfortable size: the layout is tightened a little at a time, and only when it still won't fit does the method continue on another page, never below a readable size. Use **Print or save as PDF**; every browser can save the result as a PDF. Your choices are remembered for next time.
+
 ## Recipe history
 
 Every recipe has a version number, shown at the foot of the page. A save that changes the ingredients or the method starts a new version and keeps the old one; edits to the title, notes, tags or photo do not. **History** lists each version with who saved it, when, and the note they left, shows what changed down to the word, and restores any version as a new one, so nothing is ever overwritten. The first version and the latest hundred are kept.
@@ -157,17 +190,18 @@ Some large sites turn away requests that come from servers. Fond does not pose a
 
 **Optional AI assist.** Connect any OpenAI-compatible API (Ollama works) in **Settings → AI assist** and Fond will use it for the pages that have no recipe markup at all, for messy pasted text, and to read recipes from photos with a vision model. With it on, Fond can also ask the model which known food an unfamiliar ingredient weighs like; it only ever suggests, and you confirm. Nothing is sent anywhere unless you configure this.
 
-## Moving from Mealie
+## Moving from another app
 
-**Settings → Import** (admin) takes any of:
+**Settings → Import** (admin) takes an export from any of these and works out which app made it:
 
-- a **Mealie backup** zip (Mealie: *Settings → Backups*),
-- a **recipe export** zip (Mealie: *Data Management*),
-- the address and an API token of a **running Mealie server**.
+- **Mealie**: a backup zip (*Settings → Backups*), a recipe export zip (*Data Management*), or the address and an API token of a running Mealie server.
+- **Tandoor**: the zip from *Import/Export → Export* in the Default format.
+- **Paprika**: a `.paprikarecipes` file (*File → Export → Paprika Recipe Format*), or a single `.paprikarecipe`.
+- **Recipe Sage**: the JSON-LD export (*Settings → Export your data*). Photos are fetched from the links in the export.
 
-Recipes, photos, categories, tags, tools, favorites, ratings and notes come across. Mealie's structured ingredients are turned back into plain lines exactly as Mealie displayed them, and Mealie cookbooks (which are saved filters) become real Fond cookbooks. Importing twice is safe: recipes already imported are skipped. For multi-gigabyte backups, drop the zip into the `import` folder inside Fond's data folder instead of uploading through your proxy.
+From Mealie, recipes, photos, categories, tags, tools, favorites, ratings and notes come across. Mealie's structured ingredients are turned back into plain lines exactly as Mealie displayed them, and Mealie cookbooks (which are saved filters) become real Fond cookbooks. Importing twice is safe: recipes already imported are skipped. For multi-gigabyte backups, drop the zip into the `import` folder inside Fond's data folder instead of uploading through your proxy.
 
-The importer is tested against the backup fixtures in Mealie's own repository (nine schema versions, 1,021 recipes).
+The Mealie importer is tested against the backup fixtures in Mealie's own repository (nine schema versions, 1,021 recipes). Tandoor's named steps become headings in both lists, Paprika's photos and ratings come across, and Recipe Sage's notes and labels do too.
 
 ## Configuration
 
@@ -187,7 +221,7 @@ Everything is optional.
 | `FOND_AI_BASE_URL`, `FOND_AI_MODEL`, `FOND_AI_API_KEY` | | AI assist defaults (can also be set in the app) |
 | `FOND_DATA` | `/data` | Data folder |
 
-Locked out? `docker exec fond /fond reset-password <username>` prints a new password.
+Locked out? `docker exec fond /fond reset-password <username>` prints a new password, and `docker exec fond /fond reset-2fa <username>` turns off two-step sign-in for someone who has lost their phone and their recovery codes.
 
 ## Security
 
@@ -195,6 +229,7 @@ Fond is built to be reachable from the internet behind a reverse proxy.
 
 - Passwords are hashed with argon2id. Sessions are random 256-bit tokens, stored hashed, in `HttpOnly`, `SameSite=Lax` cookies that are `Secure` over HTTPS.
 - Login is rate limited per address and per account, with identical timing for unknown users.
+- Two-step sign-in: each person can turn on authenticator codes (RFC 6238) in **Settings → Account**, with ten single-use recovery codes. A code works once; the password step waits five minutes and five tries for its code. An admin can turn it off for someone in **Settings → Household**.
 - State-changing requests are checked for cross-origin use (CSRF); API tokens are separate, revocable, and shown once.
 - A strict Content Security Policy with no inline scripts and no third-party requests, plus `frame-ancestors 'none'`, `nosniff` and a locked-down Permissions-Policy. Fonts and icons are self-hosted.
 - Recipe links are fetched with a guard against server-side request forgery: private, loopback, link-local and metadata addresses are refused at connect time, including after redirects and DNS rebinding.
@@ -206,7 +241,9 @@ Found a problem? Please open an issue, or a private security advisory for anythi
 
 ## Backups
 
-Everything lives in the data folder: `fond.db`, `images/` and `leather/` (the cookbook covers as drawn). Back up that folder. **Settings → Import → Download everything** also gives you a portable zip of every recipe as JSON, with its history and your weighing corrections, plus the photos.
+Everything lives in the data folder: `fond.db`, `images/` and `leather/` (the cookbook covers as drawn). Back up that folder. **Settings → Import → Download a backup** also gives you a portable zip: every recipe with its history and photo, the cookbooks and their covers, favourites, the household's weighing corrections, the meal plan and the shopping list.
+
+To restore it, choose the zip under **Restore a backup** on the same page. **Add to this library** brings in what isn't there yet and skips copies, so it is also how two Fonds become one. **Replace everything** clears the library first and puts the backup back exactly as it was. Accounts are not part of the backup; copy the data folder to keep those too.
 
 ## Development
 

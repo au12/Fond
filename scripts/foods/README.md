@@ -27,6 +27,16 @@ array and run `FOND_LINES=lines.json npx vitest run corpus --silent=false` in
 `web/`. It reports how many cup, spoon and counted lines get a weight and
 which names are missed most often.
 
+## Nutrition
+
+Each food also carries nutrition per 100 g as `nu`: energy (kcal), protein,
+fat, saturated fat, carbohydrate, fibre and sugars (g), and sodium (mg). It comes
+from the food's plain USDA record: SR Legacy first, FNDDS where SR Legacy has
+none. A food whose weights come from elsewhere names a record for its nutrition
+with `nut:` in `foods.txt`, either a USDA description or `like <id>` to share
+another food's (`like flour-ap x 0.5` for a starter that is half flour). Foods
+that are never weighed carry none.
+
 ## Where the numbers come from
 
 - **USDA FoodData Central, SR Legacy** (2018) is the backbone: laboratory

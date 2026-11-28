@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/au12/fond/issues</Support>
   <Project>https://github.com/au12/fond</Project>
-  <Overview>Fond is a fast, uncluttered recipe keeper. Save recipes from any website (including straight from your phone's share sheet), cook with tick-off ingredients, step timers and a screen that stays awake, weigh ingredients instead of scooping them, convert units and scale with baker's percentages, keep a history of every change, and gather recipes into beautifully typeset cookbooks you can print or share with a link. One small container, a single SQLite file, no external database. Imports directly from Mealie.</Overview>
+  <Overview>Fond is a fast, uncluttered recipe keeper. Save recipes from any website (including straight from your phone's share sheet), cook with tick-off ingredients, step timers and a screen that stays awake, weigh ingredients instead of scooping them, convert units and scale with baker's percentages, keep a history of every change, plan the week's meals, shop from a list that adds itself up, see nutrition per serving, and gather recipes into cookbooks that read like real books and print beautifully at any page size. Two-step sign-in, one small container, a single SQLite file, no external database. Imports from Mealie, Tandoor, Paprika and Recipe Sage, and restores its own backups.</Overview>
   <Category>Productivity: Tools: Status:Stable</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/au12/fond/main/unraid/fond.xml</TemplateURL>
@@ -22,7 +22,7 @@
   <DonateLink/>
   <Requires/>
   <Config Name="Web UI port" Target="8080" Default="8080" Mode="tcp" Description="Port for the Fond web interface." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
-  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/fond" Mode="rw" Description="Recipes database, photos, and the import folder for Mealie backups." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/fond</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/fond" Mode="rw" Description="Recipes database, photos, and the import folder for large exports and backups." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/fond</Config>
   <Config Name="Public address" Target="FOND_BASE_URL" Default="" Mode="" Description="Optional. The address people use to reach Fond through your reverse proxy, for example https://recipes.example.com. Used for share links and link previews." Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Time zone" Target="TZ" Default="America/New_York" Mode="" Description="Your time zone." Type="Variable" Display="always" Required="false" Mask="false">America/New_York</Config>
   <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID that owns the data folder (Unraid: 99)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>

@@ -1,5 +1,61 @@
 # Changelog
 
+## 3.0.0
+
+Fond plans the week, adds up the shopping, reads like a book and prints like one.
+
+### Meal plan
+
+- **Plan** shows a week: recipes, or notes like “Leftovers”, by day and meal (breakfast, lunch, dinner, snack), each for a number of servings. Add from the plan or from any recipe's calendar button, drag a meal to another day on a desktop, page between weeks.
+- **Shop for this week** puts the ingredients of the meals you pick on the shopping list, scaled to the servings planned.
+
+### Shopping list
+
+- Lines for the same food are joined and added up: weights to a weight, cups and spoons to an exact measure, counts to a count, and mixed measures of a food Fond can weigh to one weight. Each joined line says which recipes it came from and opens to show its lines.
+- Aisles come from the ingredient table. Delete a line (with undo), merge lines by hand, keep lines apart, or pick several to merge or delete at once.
+
+### Nutrition
+
+- Calories, protein, fat, saturated fat, carbohydrate, fibre, sugars and sodium, per serving or for the whole recipe, estimated from the ingredients. The ingredient table now carries USDA FoodData Central figures for its foods. The panel says what it counted and what it could not.
+- **Settings → Preferences → Nutrition** turns it off.
+
+### Cookbooks that read like books
+
+- **Read the book** opens a cookbook as a book: the leather cover, endpapers, a title page, contents with page numbers that jump to the recipe, a spread to open each chapter, and every recipe set as a cookbook page with its photograph on the facing page. A recipe too long for a page continues on the next.
+- Two pages at a time on a wide screen, the leaf turning on its spine; one at a time on a phone, with a swipe. Arrow keys, a page slider, units and weights, and **Open in Fond** for the recipe in front of you. The book remembers your page. Shared cookbook links open the same way.
+
+### Printing and export
+
+- Printing lays a recipe or a cookbook out as real pages at the size of the paper, and the preview shows exactly those pages. Letter, A4, legal, half letter, A5; 6 × 9, 7 × 10 and 8 × 10 book pages; 5 × 7, 4 × 6 and 3 × 5 cards. Classic or modern, three text sizes set for the sheet, white paper.
+- A recipe's photo can go on top, on its own page or be left out; notes, weights, nutrition, source and a QR code can be included. A recipe that needs more than a page continues on the next.
+- A cookbook prints as its book: covers and endpapers if you want them, contents, chapter spreads, photographs facing their recipes, page numbers, and mirrored margins with blank pages kept for printing on both sides.
+- Options are remembered. Recipes also export as Markdown, plain text or schema.org JSON. Shared recipes and cookbooks print the same way.
+
+### Importing and backups
+
+- **Settings → Import** reads exports from Mealie, Tandoor, Paprika and Recipe Sage, working out which app made the file. Recipe Sage photos are fetched from the links in its export.
+- Fond backups can be restored: added to the library (copies are skipped) or replacing it. Backups now also carry favourites, the meal plan, the shopping list and where each recipe came from.
+
+### Two-step sign-in
+
+- Turn on authenticator codes in **Settings → Account**: scan the QR code, confirm a code, keep the ten recovery codes. Signing in then asks for a code after the password. Each code works once.
+- Admins can turn it off for someone in **Settings → Household**, and `fond reset-2fa <username>` does it from the command line.
+
+### Fixed
+
+- The top and tab bars showed the page through them on Chrome and Android: the build dropped the unprefixed `backdrop-filter`, so they had no blur.
+- On a phone, sheets such as **New cookbook** could slip behind the keyboard and seem to vanish. They now stay in the part of the screen the keyboard leaves visible, and the tab bar steps aside while you type.
+- The cookbook page's buttons wrapped into ragged rows on a phone.
+
+### Also
+
+- The tab bar on phones reads Recipes, Books, Add, Plan, List; Settings is in the top bar.
+- New API: `GET|POST /api/plan`, `PUT|DELETE /api/plan/{id}`, `POST /api/plan/order`, `POST /api/shopping/group`, `POST /api/shopping/bulk`, `POST /api/import/file`, `POST /api/auth/code`, `GET /api/me/2fa`, `POST /api/me/2fa/{setup,enable,disable,recovery}`. Shopping items carry `group`; users carry `twoFactor`; exports are format 3.
+
+### Upgrading from 2.x
+
+Pull the new image and start it. The database gains the meal plan, shopping groups and two-step sign-in columns on first start. Back up the data folder first if you want a way back.
+
 ## 2.1.0
 
 Fond learns to set a page like a cookbook, and binds every book in leather.
